@@ -1,0 +1,3 @@
+#!/bin/bash
+export MAGMA_ROOT=$MAGMA_DIR
+cmake -DBUILD_FOR_GPU=yes ..
