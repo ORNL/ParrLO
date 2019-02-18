@@ -38,7 +38,7 @@ class Matrix{
                 //Visudalization methods
 		void printMatrix(); //It is used to visualize the matrix 
 
-
-                //reorthogonalize();
+		//MAGMA ROUTINES
+                void orthogonalize();
 };
 #endif

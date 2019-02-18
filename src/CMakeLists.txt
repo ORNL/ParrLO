@@ -1,3 +1,4 @@
+add_definitions(-DUSE_MAGMA)
 set(SOURCES ${CMAKE_SOURCE_DIR}/src/main.cc
    )
 

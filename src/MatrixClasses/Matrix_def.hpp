@@ -69,6 +69,11 @@ void Matrix::printMatrix(){
 
 	assert(data_initialized_);
 
+#ifdef USE_MAGMA
+	std::cout<<"MAGMA version of print"<<std::endl;
+	magma_dprint(n_rows_, n_cols_, data_.get(), n_rows_);
+#else		
+	std::cout<<"Basic implementation of print"<<std::endl;
 	for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_; ++i) {
 			//*(data_ + i + j*n_rows_) = dis(gen);
@@ -77,6 +82,14 @@ void Matrix::printMatrix(){
 		std::cout<<"\n"<<std::endl;
 	}
 
+#endif
+
 } 
+
+void Matrix::orthogonalize()
+{
+	double* sts = new double[n_cols_ * n_cols_];
+
+}
 
 #endif
