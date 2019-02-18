@@ -9,5 +9,5 @@ target_link_libraries(${MAIN} ${LINK_LIBRARIES}
 
 set(SOURCES_MATRIX ${CMAKE_SOURCE_DIR}/src/matrix_example.cc)
 
-set(MAIN_MATRIX matrix_example.cc)
+set(MAIN_MATRIX matrix_example)
 add_executable(${MAIN_MATRIX} ${SOURCES_MATRIX})

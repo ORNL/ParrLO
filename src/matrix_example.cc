@@ -1,9 +1,12 @@
-#include "MatrixClasses/RandomMatrix_def.hpp"
+#include "MatrixClasses/Matrix_def.hpp"
 
 int main()
 {
-        RandomMatrix A(5,5);
-        A.getMatrix();
+        Matrix A(5,5);
+
+	A.ZeroInitialize();
+        A.printMatrix();
+        double* B = A.getCopyData();
 
 	return 0;
 }
