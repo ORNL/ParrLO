@@ -40,5 +40,6 @@ class Matrix{
 
 		//MAGMA ROUTINES
                 void orthogonalize();
+                void matrix_sum();
 };
 #endif

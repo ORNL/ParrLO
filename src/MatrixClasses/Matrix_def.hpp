@@ -88,7 +88,74 @@ void Matrix::printMatrix(){
 
 void Matrix::orthogonalize()
 {
-	double* sts = new double[n_cols_ * n_cols_];
+	magma_init();
+        magma_trans_t transA = MagmaTrans;
+	magma_trans_t transB = MagmaNoTrans;
+	size_t m = n_cols_;
+	size_t n = n_cols_;
+	size_t k = n_rows_;
+	double alpha = 1.0;
+	double beta = 0.0;
+	double* hC = new double[n_cols_ * n_cols_];
+	assert( hC != nullptr );
+	double* hA = this->getCopyData();
+	double* hB = this->getCopyData();
+	size_t lda = n_rows_;
+	size_t ldb = n_rows_;
+	size_t ldc = n_cols_;
+	size_t ldda = n_rows_;
+	size_t lddb = n_rows_;
+	size_t lddc = n_cols_;
+
+	double *dA, *dB, *dC;
+	magma_dmalloc( &dA, n_rows_*n_cols_ );
+	magma_dmalloc( &dB, n_rows_*n_cols_ );
+	magma_dmalloc( &dC, n_cols_*n_cols_ );
+	/*assert( dA != nullptr );
+	assert( dB != nullptr );
+	assert( dC != nullptr );*/
+
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+	// copy A to dA
+	magma_dsetmatrix( n_rows_, n_cols_, hA, lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_, n_cols_, hB, ldb, dB, lddb, queue );
+
+	std::cout<<"Printing hA:"<<std::endl;
+	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
+	std::cout<<"Printing hB:"<<std::endl;
+	magma_dprint(n_rows_, n_cols_, hB, n_rows_);
+	std::cout<<"Printing dA:"<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, n_rows_, queue);
+	std::cout<<"Printing dB:"<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dB, n_rows_, queue);
+
+	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);		
+	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
+	std::cout<<"Printing hC:"<<std::endl;
+	magma_dprint(n_cols_, n_cols_, hC, n_cols_);
+	
+	magma_finalize();	
+}
+
+void Matrix::matrix_sum()
+{
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+	double* hA = this->getCopyData();
+	std::cout<<"Printing hA: "<<std::endl;
+	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
+	double *dA;
+	magma_dmalloc( &dA, n_rows_ * n_cols_ );
+	magma_dsetmatrix( n_rows_, n_cols_, hA, n_rows_, dA, n_rows_, queue );
+	std::cout<<"Printing dA: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, n_rows_, queue);
 
 }
 

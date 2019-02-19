@@ -6,11 +6,14 @@
 
 int main()
 {
-        Matrix A(5,5);
+        Matrix A(5,2);
 
-	A.ZeroInitialize();
-        A.printMatrix();
+	//A.ZeroInitialize();
+	A.RandomInitialize();
+        //A.printMatrix();
         double* B = A.getCopyData();
+	A.matrix_sum();
+	A.orthogonalize();
 
 	return 0;
 }
