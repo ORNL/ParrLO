@@ -103,17 +103,17 @@ void Matrix::orthogonalize()
 	size_t lda = n_rows_;
 	size_t ldb = n_rows_;
 	size_t ldc = n_cols_;
-	size_t ldda = n_rows_;
-	size_t lddb = n_rows_;
-	size_t lddc = n_cols_;
+	size_t ldda = magma_roundup(n_rows_, 32);
+	size_t lddb = magma_roundup(n_rows_, 32);
+	size_t lddc = magma_roundup(n_cols_, 32);
 
 	double *dA, *dB, *dC;
-	magma_dmalloc( &dA, n_rows_*n_cols_ );
-	magma_dmalloc( &dB, n_rows_*n_cols_ );
-	magma_dmalloc( &dC, n_cols_*n_cols_ );
-	/*assert( dA != nullptr );
+	magma_dmalloc( &dA, ldda*n_cols_ );
+	magma_dmalloc( &dB, lddb*n_cols_ );
+	magma_dmalloc( &dC, lddc*n_cols_ );
+	assert( dA != nullptr );
 	assert( dB != nullptr );
-	assert( dC != nullptr );*/
+	assert( dC != nullptr );
 
 	magma_queue_t queue;
 	int device;
@@ -129,9 +129,9 @@ void Matrix::orthogonalize()
 	std::cout<<"Printing hB:"<<std::endl;
 	magma_dprint(n_rows_, n_cols_, hB, n_rows_);
 	std::cout<<"Printing dA:"<<std::endl;
-	magma_dprint_gpu(n_rows_, n_cols_, dA, n_rows_, queue);
+	magma_dprint_gpu(ldda, n_cols_, dA, ldda, queue);
 	std::cout<<"Printing dB:"<<std::endl;
-	magma_dprint_gpu(n_rows_, n_cols_, dB, n_rows_, queue);
+	magma_dprint_gpu(lddb, n_cols_, dB, lddb, queue);
 
 	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);		
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
