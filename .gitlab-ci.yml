@@ -1,0 +1,7 @@
+image: code.ornl.gov:4567/bt2/parallellinearalgebra
+test:
+  stage: test
+  script:
+    - ls
+    - echo "$PWD"
+    - git log -n 1
