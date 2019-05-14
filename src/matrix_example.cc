@@ -1,4 +1,5 @@
 #include "MatrixClasses/Matrix_def.hpp"
+#include "mpi.h"
 
 #ifndef USE_MAGMA
 #define USE_MAGMA
@@ -6,6 +7,9 @@
 
 int main()
 {
+
+        MPI_Init(NULL, NULL);
+
         Matrix A(5,5);
         Matrix B(5,5);
 
@@ -25,5 +29,6 @@ int main()
 	A.orthogonalize(10, 0.1);
         //A.printMatrix();
 
+        MPI_Finalize();
 	return 0;
 }

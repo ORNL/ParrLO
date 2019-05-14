@@ -2,7 +2,7 @@
 #define MATRIX_DECL_HPP
 
 #include <memory> //needed for unique pointers
-
+#include <mpi.h>
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
@@ -14,7 +14,9 @@ class Matrix{
 		size_t n_cols_;//number of columns 
 		double* data_; //pointer to basic data structure
 		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
-
+                size_t n_rows_local_;
+                 
+ 
 		bool data_initialized_ = false; 
 
         public:

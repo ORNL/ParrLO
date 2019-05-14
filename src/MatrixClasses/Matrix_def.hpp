@@ -11,9 +11,17 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 
 	assert(n_rows_ >= 0);
 	assert(n_cols_ >= 0);
-
-        data_ = new double[n_rows_ * n_cols_];
+          
+        int comm_rank, comm_size;
+        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        n_rows_local_=floor(n_rows_/comm_size);
+        if(comm_rank+1 <= n_rows_ %comm_size)
+           n_rows_local_++ ;
+          
+        data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
+
 
 } 
 
