@@ -3,6 +3,7 @@
 
 #include <memory> //needed for unique pointers
 #include <mpi.h>
+using namespace std;
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
@@ -15,8 +16,8 @@ class Matrix{
 		double* data_; //pointer to basic data structure
 		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
                 size_t n_rows_local_;
-                 
- 
+                vector<size_t> global_row_id_;   
+                vector<size_t> local_row_id_;
 		bool data_initialized_ = false; 
 
         public:

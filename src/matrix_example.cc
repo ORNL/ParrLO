@@ -1,5 +1,5 @@
 #include "MatrixClasses/Matrix_def.hpp"
-#include "mpi.h"
+#include <mpi.h>
 
 #ifndef USE_MAGMA
 #define USE_MAGMA
@@ -9,8 +9,8 @@ int main()
 {
 
         MPI_Init(NULL, NULL);
-
-        Matrix A(5,5);
+/*       
+         Matrix A(5,5);
         Matrix B(5,5);
 
 	//A.ZeroInitialize();
@@ -28,7 +28,8 @@ int main()
 	//A.matrix_sum();
 	A.orthogonalize(10, 0.1);
         //A.printMatrix();
-
+*/
         MPI_Finalize();
+
 	return 0;
 }

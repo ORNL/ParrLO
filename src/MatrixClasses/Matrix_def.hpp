@@ -18,7 +18,20 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
         n_rows_local_=floor(n_rows_/comm_size);
         if(comm_rank+1 <= n_rows_ %comm_size)
            n_rows_local_++ ;
-          
+         
+        global_row_id_.resize(n_rows_local_);
+        local_row_id_.resize(n_rows_local_);
+  
+       //Matrix partitioner
+        for (size_t index = 1; index = n_rows_local_; ++index)
+           {
+           local_row_id_[index-1]  = index -1;
+            if(comm_rank+1<= n_rows_%comm_size) 
+              global_row_id_[index-1] = (comm_rank+1)*n_rows_local_+index-1;
+            else   
+              global_row_id_[index-1] = (floor(n_rows_/comm_size) +1)+(n_rows_%comm_size)+floor(n_rows_/comm_size)*(comm_rank-n_rows_%comm_size); 
+           }
+
         data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
 
@@ -40,8 +53,8 @@ void Matrix::operator=(const Matrix& B)
 	n_cols_ = B.getNumCols();
 	
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
-			data_[i+j*n_rows_] = B(i,j);
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
+			data_[i+j*n_rows_local_] = B(i,j);
 		}
 	}
 	data_initialized_ = true;	
@@ -49,7 +62,8 @@ void Matrix::operator=(const Matrix& B)
 
 double Matrix::operator()(const size_t i, const size_t j) const 
 {
-	assert(i>=0 & i<n_rows_);
+// currently does not work with MPI	
+        assert(i>=0 & i<n_rows_);
 	assert(j>=0 & j<n_cols_);
 	
 	return data_[i+j*n_rows_];
@@ -63,8 +77,8 @@ Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()){
 	assert(n_cols_ >= 0);
 
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
-			data_[i+j*n_rows_] = B(i,j);
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
+			data_[i+j*n_rows_local_] = B(i,j);
 		}
 	}
 
@@ -77,8 +91,8 @@ void Matrix::zeroInitialize(){
 	assert(!data_initialized_);
 
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
-			data_[i+j*n_rows_] = 0.0;
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
+			data_[i+j*n_rows_local_] = 0.0;
 		}
 	}
 
@@ -92,11 +106,11 @@ void Matrix::identityInitialize(){
 	assert(!data_initialized_);
 
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
-			if(i!=j)
-				data_[i+j*n_rows_] = 0.0;
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
+			if(global_row_id_[i]!=j)
+				data_[i+j*n_rows_local_] = 0.0;
 			else
-				data_[i+j*n_rows_] = 1.0;
+				data_[i+j*n_rows_local_] = 1.0;
 		}
 	}
 
@@ -113,9 +127,9 @@ void Matrix::randomInitialize(){
 	assert(!data_initialized_);
 
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
 			//*(data_ + i + j*n_rows_) = dis(gen);
-			data_[i+j*n_rows_] = dis(gen);
+			data_[i+j*n_rows_local_] = dis(gen);
 		}
 	}
 
@@ -140,7 +154,7 @@ double* Matrix::getCopyData() const
 
 void Matrix::printMatrix() const
 {
-
+// Currently it does not support MPI
 	assert(data_initialized_);
 
 #ifdef USE_MAGMA
@@ -163,6 +177,8 @@ void Matrix::printMatrix() const
 
 void Matrix::computeFrobeniusNorm()
 {
+
+// Currently does not support MPI
 	assert(data_ != NULL);
 	assert(data_initialized_);
 
@@ -196,9 +212,9 @@ void Matrix::computeFrobeniusNorm()
 void Matrix::scaleMatrix(double scale_factor)
 {
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
 			//*(data_ + i + j*n_rows_) = dis(gen);
-			data_[i+j*n_rows_] = scale_factor * data_[i+j*n_rows_];
+			data_[i+j*n_rows_local_] = scale_factor * data_[i+j*n_rows_local_];
 		}
 	}
 
@@ -208,16 +224,18 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 {
 	size_t m = n_cols_;
 	size_t n = n_cols_;
-	size_t k = n_rows_;
+	size_t k = n_rows_local_;
 	double alpha = 1.0;
 	double beta = 0.0;
 	double* hC = new double[n_cols_ * n_cols_];
 	assert( hC != nullptr );
 	double* hA = this->getCopyData();
 	double* hB = this->getCopyData();
-	size_t lda = n_rows_;
-	size_t ldb = n_rows_;
+	size_t lda = n_rows_local_;
+	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
+
+        double* hCsum  = new double[n_cols_ * n_cols_];
 
 #ifdef USE_MAGMA
 	magma_init();
@@ -226,8 +244,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_trans_t transB = MagmaNoTrans;
 	double *dA, *dB, *dC;
 
-	size_t ldda = magma_roundup(n_rows_, 32);
-	size_t lddb = magma_roundup(n_rows_, 32);
+	size_t ldda = magma_roundup(n_rows_local_, 32);
+	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
 
 	magma_dmalloc( &dA, ldda*n_cols_ );
@@ -244,8 +262,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_queue_create( device, &queue );
 
 	// copy A to dA
-	magma_dsetmatrix( n_rows_, n_cols_, hA, lda, dA, ldda, queue );
-	magma_dsetmatrix( n_rows_, n_cols_, hB, ldb, dB, lddb, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, hA, lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, hB, ldb, dB, lddb, queue );
 
 	/*std::cout<<"Printing hA:"<<std::endl;
 	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
@@ -257,7 +275,12 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dprint_gpu(lddb, n_cols_, dB, lddb, queue);*/
 	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
-
+        
+        // sum hC over all processors
+        
+        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+        magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
+ 
 	unsigned int count_iter = 0;
 	double relative_residual = 1.0;
 
