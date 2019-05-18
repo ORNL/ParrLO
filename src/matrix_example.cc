@@ -5,10 +5,15 @@
 #define USE_MAGMA
 #endif
 
-int main()
+int main(int argc, char **argv)
 {
 
-        MPI_Init(NULL, NULL);
+        int i = MPI_Init(&argc,&argv);
+ 
+        if( i != MPI_SUCCESS)
+        std::cout<<"massimiliano"<<i<<endl; 
+        else
+        MPI_Abort(MPI_COMM_WORLD, 0);
 /*       
          Matrix A(5,5);
         Matrix B(5,5);
