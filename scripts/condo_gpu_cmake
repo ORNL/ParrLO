@@ -1,3 +1,4 @@
 #!/bin/bash
-export MAGMA_ROOT=$MAGMA_DIR
-cmake -DBUILD_FOR_GPU=yes ..
+# magma 2.4.0 on condo does not export the flags correctly so we add them using
+# CMAKE_EXE_LINKER_FLAGS
+cmake -DBUILD_FOR_GPU=ON -DCMAKE_EXE_LINKER_FLAGS="${CUDA_LIB} -lcudart -lcudadevrt -lcublas -lcusparse" ..
