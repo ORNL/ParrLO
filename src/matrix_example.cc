@@ -1,5 +1,6 @@
 #include "MatrixClasses/Matrix_def.hpp"
 #include <mpi.h>
+#include <iostream>
 
 #ifndef USE_MAGMA
 #define USE_MAGMA
@@ -11,17 +12,18 @@ int main(int argc, char **argv)
         int i = MPI_Init(&argc,&argv);
  
         if( i != MPI_SUCCESS)
-        std::cout<<"massimiliano"<<i<<endl; 
-        else
-        MPI_Abort(MPI_COMM_WORLD, 0);
-/*       
-         Matrix A(5,5);
-        Matrix B(5,5);
+        }else{
+
+        std::cout<<"MPI SUCCESS"<<i<<std::endl;
+
+       
+        Matrix A(5,5);
+//      Matrix B(5,5);
 
 	//A.ZeroInitialize();
-	A.randomInitialize();
+//	A.randomInitialize();
         //A.printMatrix();
-	A.scaleMatrix(0.01);
+/*	A.scaleMatrix(0.01);
         //A.printMatrix();
 
 	B.identityInitialize();
@@ -34,6 +36,7 @@ int main(int argc, char **argv)
 	A.orthogonalize(10, 0.1);
         //A.printMatrix();
 */
+        } 
         MPI_Finalize();
 
 	return 0;

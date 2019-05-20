@@ -23,7 +23,7 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
         local_row_id_.resize(n_rows_local_);
   
        //Matrix partitioner
-        for (size_t index = 1; index = n_rows_local_; ++index)
+        for (size_t index = 1; index <= n_rows_local_; ++index)
            {
            local_row_id_[index-1]  = index -1;
             if(comm_rank+1<= n_rows_%comm_size) 
