@@ -18,7 +18,7 @@ if(${BLAS_FOUND})
   # Add BLAS LIBRARIES to the path searched by check_C_Fortran_function_exists
   set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
   check_C_Fortran_function_exists(dscal C_DSCAL REQUIRED)
-  add_compile_definitions(C_DSCAL=${C_DSCAL})
+  add_definitions(-DC_DSCAL=${C_DSCAL})
 endif()
 
 set(BUILD_FOR_GPU FALSE CACHE BOOL "Whether to build for GPU")
@@ -29,7 +29,7 @@ if(${BUILD_FOR_GPU})
 endif()
 
 if(${MAGMA_FOUND})
-  add_compile_definitions(USE_MAGMA)
+  add_definitions(-DUSE_MAGMA)
   message(STATUS
     "MAGMA was found:\n"
     "  MAGMA_INCLUDE_DIRS: ${MAGMA_INCLUDE_DIRS}\n"
