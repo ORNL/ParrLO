@@ -372,8 +372,8 @@ void Matrix::matrix_sum(Matrix& B)
 	assert(n_rows_ == B.getNumRows());
 	assert(n_cols_ == B.getNumCols());
 
-	size_t lda = n_rows_;
-	size_t ldb = n_rows_;
+	size_t lda = n_rows_local_;
+	size_t ldb = n_rows_local_;
 
 	double* hA = this->getCopyData();
 	//std::cout<<"Printing hA: "<<std::endl;
@@ -386,31 +386,32 @@ void Matrix::matrix_sum(Matrix& B)
 	magma_getdevice( &device );
 	magma_queue_create( device, &queue );
 
-	size_t ldda = magma_roundup(n_rows_, 32);
-	size_t lddb = magma_roundup(n_rows_, 32);
+	size_t ldda = magma_roundup(n_rows_local_, 32);
+	size_t lddb = magma_roundup(n_rows_local_, 32);
 
 	double *dA;
 	magma_dmalloc( &dA, ldda * n_cols_ );
-	magma_dsetmatrix( n_rows_, n_cols_, hA, n_rows_, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, hA, n_rows_local_, dA, ldda, queue );
 	//std::cout<<"Printing dA: "<<std::endl;
 	//magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);
 	double *dB;
 	magma_dmalloc( &dB, lddb * n_cols_ );
-	magma_dsetmatrix( n_rows_, n_cols_, B.getCopyData(), n_rows_, dB, lddb, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, B.getCopyData(), n_rows_local_, dB, lddb, queue );
 	//std::cout<<"Printing dB: "<<std::endl;
 	//magma_dprint_gpu(n_rows_, n_cols_, dB, lddb, queue);
         magmablas_dgeadd (ldda, n_cols_, 1.0, dB, lddb, dA, ldda, queue);
-	magma_dgetmatrix( n_rows_, n_cols_, dA, ldda, data_, n_rows_, queue );
+	magma_dgetmatrix( n_rows_local_, n_cols_, dA, ldda, data_, n_rows_local_, queue );
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 	magma_free(dA);
 	magma_free(dB);
 
 	magma_finalize();
+//if MAGMA not used reimplement access operator
 #else
 	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_; ++i) {
-			data_[i+j*n_rows_] += B(i,j);
+        	for (size_t i = 0; i < n_rows_local_; ++i) {
+			data_[i+j*n_rows_local_] += B(i,j);
 		}
 	}
 #endif

@@ -18,12 +18,12 @@ int main(int argc, char **argv)
 
        
         Matrix A(5,5);
-//      Matrix B(5,5);
+        Matrix B(5,5);
 
-	//A.ZeroInitialize();
-//	A.randomInitialize();
+//	A.zeroInitialize();
+	A.randomInitialize();
         //A.printMatrix();
-/*	A.scaleMatrix(0.01);
+	A.scaleMatrix(0.01);
         //A.printMatrix();
 
 	B.identityInitialize();
@@ -31,13 +31,13 @@ int main(int argc, char **argv)
 	
         A.matrix_sum(B);
         //A.printMatrix();
-	A.computeFrobeniusNorm();
+//	A.computeFrobeniusNorm();
 	//A.matrix_sum();
 	A.orthogonalize(10, 0.1);
         //A.printMatrix();
-*/
-        } 
-        MPI_Finalize();
+
+       }
+       MPI_Finalize();
 
 	return 0;
 }
