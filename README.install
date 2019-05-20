@@ -1,7 +1,13 @@
-#From main directory:
-
+From main directory:
+```
 mkdir build
 cd build
 cmake ..
 make
+```
 
+To use magma use 
+```
+cmake -DBUILD_ON_GPU=ON ..
+```
+To set the path to magma use `-DCMAKE_PREFIX_PATH`
