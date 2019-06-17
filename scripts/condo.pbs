@@ -1,6 +1,6 @@
 #!/bin/csh
 #PBS -N PLinAlg
-#PBS -M lupopasinim@ornl.gov
+#PBS -M fattebertj@ornl.gov
 #PBS -l nodes=1
 #PBS -l walltime=0:10:00
 #PBS -W group_list=cades-ccsd
@@ -18,13 +18,13 @@ module load magma
 module list
 ### Switch to the working directory (path of your PBS script).
 ###cd $PBS_O_WORKDIR
-cd /lustre/or-hydra/cades-ccsd/7ml
+cd /lustre/or-hydra/cades-cees/q8j/ParallelLinearAlgebra
 
 ### Show current directory.
 pwd
 setenv OMP_NUM_THREADS 1
 
-set maindir = ~/ParallelLinearAlgebra
+set maindir = ~/GIT/ParallelLinearAlgebra
 
 set exe = $maindir/build/src/main
 
