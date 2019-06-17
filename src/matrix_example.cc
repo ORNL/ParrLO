@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 
         int i = MPI_Init(&argc,&argv);
  
-        if( i != MPI_SUCCESS)
+        if( i != MPI_SUCCESS){
         }else{
 
         std::cout<<"MPI SUCCESS"<<i<<std::endl;
