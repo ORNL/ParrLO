@@ -6,13 +6,10 @@
 #include <vector>
 #include <stdlib.h>
 
-#include <mpi.h>
 #include "blas.h"
 
 int main(int argc, char** argv)
 {
-    MPI_Init(&argc, &argv);
-
     // read in an int (dimension of matrix)
     const int n = atoi( argv[1] );
     const int n2 = n*n;
@@ -28,8 +25,6 @@ int main(int argc, char** argv)
 
 #ifdef USE_MAGMA
     std::cout<<"Run on GPU..."<<std::endl;
-
-    magma_init();
 
     // alocate data on GPU
     int ld =magma_roundup(n, 32);
@@ -53,8 +48,6 @@ int main(int argc, char** argv)
     magma_queue_destroy( queue );
 
     magma_free(dv1);
-
-    magma_finalize();
 #else
 
     //blas1 call
@@ -67,8 +60,6 @@ int main(int argc, char** argv)
     {
         std::cout<< it << std::endl;
     }
-
-    MPI_Finalize();
 
     return 0;
 }
