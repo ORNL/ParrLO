@@ -13,7 +13,6 @@
 #   MAGMA_USE_STATIC_LIBS     ... if true, only static libraries are found
 #   MAGMA_ROOT                ... if set, the libraries are exclusively searched
 #                                 under this path
-
 #If environment variable MAGMA_ROOT is specified, it has same effect as MAGMA_ROOT
 if( NOT MAGMA_ROOT AND NOT $ENV{MAGMA_ROOT} STREQUAL "" )
     set( MAGMA_ROOT $ENV{MAGMA_ROOT} )
