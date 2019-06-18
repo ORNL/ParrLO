@@ -13,6 +13,8 @@ if(${BLAS_FOUND})
     "  BLAS_LIBRARIES: ${BLAS_LIBRARIES}\n"
   )
 endif()
+set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
+list(APPEND LINK_LIBRARIES ${BLAS_LIBRARIES})
 
 if(${BLAS_FOUND})
   # Add BLAS LIBRARIES to the path searched by check_C_Fortran_function_exists
@@ -24,6 +26,7 @@ endif()
 set(BUILD_FOR_GPU FALSE CACHE BOOL "Whether to build for GPU")
 if(${BUILD_FOR_GPU})
   enable_language(CUDA)
+  include_directories(${CUDA_INCLUDE_DIRS})
 
   find_package(MAGMA REQUIRED)
 endif()
@@ -36,8 +39,11 @@ if(${MAGMA_FOUND})
     "  MAGMA_LIBRARY_DIRS: ${MAGMA_LIBRARY_DIRS}\n"
     "  MAGMA_LIBRARIES: ${MAGMA_LIBRARIES}"
   )
+  include_directories(${MAGMA_INCLUDE_DIRS})
+  list(APPEND LINK_LIBRARIES ${MAGMA_LIBRARIES})
 endif()
 
 find_package(MPI REQUIRED)
+list(APPEND LINK_LIBRARIES ${MPI_CXX_LIBRARIES})
 
 add_subdirectory(src)
