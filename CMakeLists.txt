@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 project (ParallelLinearAlgebra LANGUAGES CXX)
 
+set (CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -44,6 +45,10 @@ if(${MAGMA_FOUND})
 endif()
 
 find_package(MPI REQUIRED)
-list(APPEND LINK_LIBRARIES ${MPI_CXX_LIBRARIES})
+include_directories(${MPI_INCLUDE_PATH})
+
+#enable_testing()
 
 add_subdirectory(src)
+
+#add_subdirectory(tests)
