@@ -8,6 +8,8 @@ make
 
 To use magma use 
 ```
-cmake -DBUILD_ON_GPU=ON ..
-```
-To set the path to magma use `-DCMAKE_PREFIX_PATH`
+cmake -DBUILD_ON_GPU=ON -DCMAKE_EXE_LINKER_FLAGS="${CUDA_LIB} -lcudart -lcudadevrt -lcublas -lcusparse " ..
+
+(see scripts/condo_gpu_cmake)
+
+Note: the appropriate modules may need to be loaded (openBLAS, cuda, magma,...)

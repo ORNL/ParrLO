@@ -1,6 +1,6 @@
-module load PE-gnu/2.0
-module unload gcc/5.3.0
-module load gcc/6.3.0
+#Module to load
+
+module load PE-gnu
 module load openBLAS
 module load cmake
 module load cuda/8.0
