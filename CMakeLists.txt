@@ -46,7 +46,6 @@ endif()
 
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
-list(APPEND LINK_LIBRARIES ${MPI_CXX})
 
 #enable_testing()
 
