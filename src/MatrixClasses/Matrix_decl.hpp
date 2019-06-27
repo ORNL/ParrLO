@@ -2,6 +2,7 @@
 #define MATRIX_DECL_HPP
 
 #include <memory> //needed for unique pointers
+#include <vector>
 #include <mpi.h>
 #ifdef USE_MAGMA
 #include "magma_v2.h"
@@ -41,6 +42,7 @@ class Matrix{
 
                 //Routines to retrieve info about the size of a matrix
 		size_t getNumRows() const;
+		size_t getNumRowsLocal() const;
 		size_t getNumCols() const;
                 
 		//Overriding of assignment operator 
@@ -62,6 +64,7 @@ class Matrix{
 
 		//MAGMA ROUTINES
                 void orthogonalize(unsigned int, double);
+		void orthogonalityCheck();
                 void matrix_sum(Matrix&);
 
 		//FRIEND methods
