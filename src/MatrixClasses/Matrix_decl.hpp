@@ -9,10 +9,6 @@
 #include "magma_v2.h"
 #endif
 
-
-
-
-
 class Matrix{	
 
 	private:

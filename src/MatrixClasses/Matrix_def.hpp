@@ -41,7 +41,6 @@ Matrix::Matrix(size_t n, size_t m,MPI_Comm comm ):n_rows_(n),n_cols_(m),lacomm(c
         }
 
 	data_.resize(n_rows_local_ * n_cols_);
-        //data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
 
 
