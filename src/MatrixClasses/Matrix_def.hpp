@@ -42,7 +42,8 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 	    }
         }
 
-        data_ = new double[n_rows_local_ * n_cols_];
+	data_.resize(n_rows_local_ * n_cols_);
+        //data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
 
 
@@ -50,6 +51,9 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 
 bool Matrix::Initialized() const
 {
+	if(data_initialized_)
+		assert( data_.size()==n_rows_local_*n_cols_ );
+
 	return data_initialized_;
 }
 
@@ -86,7 +90,7 @@ Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()),n_rows
 
 	//For now it is only a local access and it assumes that different 
 	//matrices are partitioned the same way
-	assert( B.getCopyData()!=NULL );
+	assert( B.getDataRawPtr()!=nullptr );
 	assert(n_rows_ >= 0);
 	assert(n_rows_local_ >= 0);
 	assert(n_cols_ >= 0);
@@ -104,12 +108,15 @@ Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()),n_rows
 void Matrix::zeroInitialize(){
 
 	assert(!data_initialized_);
+	assert( data_.size()==n_rows_local_*n_cols_ );
 
-	for (size_t j = 0; j < n_cols_; ++j) {
+	/*for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_local_; ++i) {
 			data_[i+j*n_rows_local_] = 0.0;
 		}
-	}
+	}*/
+
+	data_.assign(n_rows_local_*n_cols_,0);
 
 	data_initialized_ = true;
 
@@ -156,15 +163,29 @@ size_t Matrix::getNumRows() const { return n_rows_;}
 size_t Matrix::getNumRowsLocal() const { return n_rows_local_;}
 size_t Matrix::getNumCols() const { return n_cols_;}
 
-double* Matrix::getCopyData() const
+std::vector<double> Matrix::getCopyData() const
 {
-	assert( data_!=NULL );
-	double* data_copy = new double[n_rows_*n_cols_]; 
+	//assert( data_!=nullptr );
+	std::vector<double> data_copy; 
 
-        for(size_t index = 0; index < n_rows_*n_cols_; ++index)
-		data_copy[index] = data_[index];
+        /*for(size_t index = 0; index < n_rows_*n_cols_; ++index)
+		data_copy[index] = data_[index];*/
+	data_copy = data_;
 
 	return data_copy;
+
+}
+
+const double* Matrix::getDataRawPtr() const
+{
+	/*const double* data_ptr = data_.data();
+	assert( data_ptr!=nullptr );
+	double* data_copy = new double[n_rows_local_*n_cols_];
+
+        for(size_t index = 0; index < n_rows_local_*n_cols_; ++index)
+		data_copy[index] = data_ptr[index];*/
+
+	return data_.data();
 
 }
 
@@ -183,7 +204,7 @@ void Matrix::printMatrix() const
 
 	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl<<std::flush;
 	//magma_dprint(n_rows_, n_cols_, data_.get(), n_rows_);
-	magma_dprint(n_rows_local_, n_cols_, data_, n_rows_local_);
+	magma_dprint(n_rows_local_, n_cols_, this->getDataRawPtr(), n_rows_local_);
 #else		
 	if(comm_rank==0)
 		std::cout<<"Basic implementation of print"<<std::endl<<std::flush;
@@ -205,7 +226,7 @@ void Matrix::computeFrobeniusNorm()
 {
 
 // Currently does not support MPI
-	assert(data_ != NULL);
+	//assert(data_ != nullptr);
 	assert(data_initialized_);
 
 	magma_init();
@@ -255,8 +276,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	double beta = 0.0;
 	double* hC = new double[n_cols_ * n_cols_];
 	assert( hC != nullptr );
-	double* hA = this->getCopyData();
-	double* hB = this->getCopyData();
+	/*double* hA = this->getCopyRawPtrData();
+	double* hB = this->getCopyRawPtrData();*/
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
@@ -288,8 +309,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_queue_create( device, &queue );
 
 	// copy A to dA
-	magma_dsetmatrix( n_rows_local_, n_cols_, hA, lda, dA, ldda, queue );
-	magma_dsetmatrix( n_rows_local_, n_cols_, hB, ldb, dB, lddb, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), ldb, dB, lddb, queue );
 
 	/*std::cout<<"Printing hA:"<<std::endl;
 	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
@@ -378,7 +399,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dmalloc( &dAortho, ldda*n_cols_ );
 	magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,ldda,n_cols_,n_cols_,alpha,dA,ldda,dZ,lddc,beta,dAortho,ldda,queue);	
 
-	magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, data_, lda, queue );
+	magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &data_[0], lda, queue );
 
 	/*std::cout<<"Orthogonalized matrix dAortho:"<<std::endl;
 	magma_dprint_gpu(ldda, n_cols_, dAortho, lda, queue);
@@ -402,8 +423,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	/*std::cout<<"Printing hC:"<<std::endl;
 	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
 
-	delete[] hA;
-	delete[] hB;
+	/*delete[] hA;
+	delete[] hB;*/
 	delete[] hC;	
 
 }
@@ -418,8 +439,8 @@ void Matrix::orthogonalityCheck()
 	double beta = 0.0;
 	double* hC = new double[n_cols_ * n_cols_];
 	assert( hC != nullptr );
-	double* hA = this->getCopyData();
-	double* hB = this->getCopyData();
+	/*double* hA = this->getCopyRawPtrData();
+	double* hB = this->getCopyRawPtrData();*/
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
@@ -451,8 +472,8 @@ void Matrix::orthogonalityCheck()
 	magma_queue_create( device, &queue );
 
 	// copy A to dA
-	magma_dsetmatrix( n_rows_local_, n_cols_, hA, lda, dA, ldda, queue );
-	magma_dsetmatrix( n_rows_local_, n_cols_, hB, ldb, dB, lddb, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), ldb, dB, lddb, queue );
 
 	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
@@ -460,11 +481,11 @@ void Matrix::orthogonalityCheck()
         // sum hC over all processors
         
         MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	std::cout<<"Printing hCsum:"<<std::endl;
-	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);
+	/*std::cout<<"Printing hCsum:"<<std::endl;
+	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
         magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
-	/*std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
-	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);*/
+	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
+	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
 
 #endif
 
@@ -480,7 +501,7 @@ void Matrix::matrix_sum(Matrix& B)
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 
-	double* hA = this->getCopyData();
+	//double* hA = this->getCopyRawPtrData();
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 #ifdef USE_MAGMA
@@ -496,16 +517,18 @@ void Matrix::matrix_sum(Matrix& B)
 
 	double *dA;
 	magma_dmalloc( &dA, ldda * n_cols_ );
-	magma_dsetmatrix( n_rows_local_, n_cols_, hA, n_rows_local_, dA, ldda, queue );
-	//std::cout<<"Printing dA: "<<std::endl;
-	//magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), n_rows_local_, dA, ldda, queue );
+	/*std::cout<<"Printing dA before sum: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);*/
 	double *dB;
 	magma_dmalloc( &dB, lddb * n_cols_ );
-	magma_dsetmatrix( n_rows_local_, n_cols_, B.getCopyData(), n_rows_local_, dB, lddb, queue );
-	//std::cout<<"Printing dB: "<<std::endl;
-	//magma_dprint_gpu(n_rows_, n_cols_, dB, lddb, queue);
+	magma_dsetmatrix( n_rows_local_, n_cols_, B.getDataRawPtr(), n_rows_local_, dB, lddb, queue );
+	/*std::cout<<"Printing dB: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dB, lddb, queue);*/
         magmablas_dgeadd (ldda, n_cols_, 1.0, dB, lddb, dA, ldda, queue);
-	magma_dgetmatrix( n_rows_local_, n_cols_, dA, ldda, data_, n_rows_local_, queue );
+	magma_dgetmatrix( n_rows_local_, n_cols_, dA, ldda, &data_[0], n_rows_local_, queue );
+	/*std::cout<<"Printing dA after sum: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);*/
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 	magma_free(dA);

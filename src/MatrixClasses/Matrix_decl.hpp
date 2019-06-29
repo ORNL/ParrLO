@@ -13,7 +13,7 @@ class Matrix{
 	private:
 		size_t n_rows_;//number of rows
 		size_t n_cols_;//number of columns 
-		double* data_; //pointer to basic data structure
+		std::vector<double> data_; //pointer to basic data structure
 		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
                 size_t n_rows_local_;
                 std::vector<size_t> global_row_id_;   
@@ -52,7 +52,8 @@ class Matrix{
 		double operator()(const size_t, const size_t) const ; 
 
 		//Routines to get a copy fo the data
-                double* getCopyData() const; //returns the pointer to a copy of the data
+                std::vector<double> getCopyData() const; //returns the vector copy of the data
+                const double* getDataRawPtr() const; //returns the pointer to a copy of the data
 
                 //Visudalization methods
 		void printMatrix() const; //It is used to visualize the matrix 
