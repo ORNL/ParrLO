@@ -302,7 +302,6 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dmalloc( &dwork, lddc );
 	double one_norm_value = magmablas_dlange (one_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
 	double inf_norm_value = magmablas_dlange (inf_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
-	//std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
 
 	//Implementation of Schulz iteration
 
