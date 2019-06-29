@@ -232,7 +232,7 @@ void Matrix::computeFrobeniusNorm()
 	double inf_norm_value = magmablas_dlange (inf_norm, n_rows_, n_cols_, dA, ldda, dwork, ldda, queue);
 	std::cout<<"Computed One Norm: "<<one_norm_value<<std::endl;
 	std::cout<<"Computed Inf Norm: "<<inf_norm_value<<std::endl;
-	std::cout<<"Computed Upper Bound for Frobenius Norm: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
+	std::cout<<"Computed Upper Bound for Frobenius Norm: "<<std::sqrt(one_norm_value * inf_norm_value)<<std::endl;
 	magma_finalize();
 
 }
@@ -240,13 +240,8 @@ void Matrix::computeFrobeniusNorm()
 
 void Matrix::scaleMatrix(double scale_factor)
 {
-	for (size_t j = 0; j < n_cols_; ++j) {
-        	for (size_t i = 0; i < n_rows_local_; ++i) {
-			//*(data_ + i + j*n_rows_) = dis(gen);
-			data_[i+j*n_rows_local_] = scale_factor * data_[i+j*n_rows_local_];
-		}
-	}
-
+	std::transform(data_.begin(), data_.end(), data_.begin(),
+                   [scale_factor](double alpha){ return scale_factor * alpha; });
 }
 
 void Matrix::orthogonalize(unsigned int max_iter, double tol)
