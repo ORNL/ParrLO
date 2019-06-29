@@ -3,6 +3,7 @@
 
 #include <memory> //needed for unique pointers
 #include <vector>
+#include <algorithm>
 #include <mpi.h>
 #ifdef USE_MAGMA
 #include "magma_v2.h"
