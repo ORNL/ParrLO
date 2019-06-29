@@ -246,7 +246,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
         double* hCsum  = new double[n_cols_ * n_cols_];
 
 #ifdef USE_MAGMA
-	magma_init();
+//	magma_init();
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
@@ -379,7 +379,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_free(dC);
 	magma_free(dwork);
 
-	magma_finalize();	
+//	magma_finalize();	
 #endif
 	delete[] hC;	
 	delete[] hCsum;	
@@ -405,7 +405,7 @@ void Matrix::orthogonalityCheck()
         double* hCsum  = new double[n_cols_ * n_cols_];
 
 #ifdef USE_MAGMA
-	magma_init();
+//	magma_init();
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
@@ -462,7 +462,7 @@ void Matrix::matrixSum(Matrix& B)
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 #ifdef USE_MAGMA
-        magma_init();
+//        magma_init();
 
 	magma_queue_t queue;
 	int device;
@@ -491,7 +491,7 @@ void Matrix::matrixSum(Matrix& B)
 	magma_free(dA);
 	magma_free(dB);
 
-	magma_finalize();
+//	magma_finalize();
 //if MAGMA not used reimplement access operator
 #else
 	for (size_t j = 0; j < n_cols_; ++j) {

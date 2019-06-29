@@ -21,7 +21,11 @@ int main(int argc, char **argv)
         int comm_rank, comm_size;
         MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#ifdef USE_MAGMA
+        magma_init();
+#else
 
+#endif
 	int matrix_dim = 10;
        
         Matrix A(matrix_dim,matrix_dim);
@@ -87,6 +91,11 @@ int main(int argc, char **argv)
 		std::cout<<"Frobenius norm of orthogonalized matrix: "<<frobeniusNorm<<std::endl<<std::flush;
 
        }
+#ifdef USE_MAGMA
+       magma_finalize();
+#else
+
+#endif
        MPI_Finalize();
 
 	return 0;
