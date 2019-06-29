@@ -377,6 +377,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_free(dAortho);
 	magma_free(dB);
 	magma_free(dC);
+	magma_free(dwork);
 
 	magma_finalize();	
 #endif
