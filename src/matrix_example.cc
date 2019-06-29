@@ -86,6 +86,10 @@ int main(int argc, char **argv)
 		std::cout<<"Orthogonality check A"<<std::endl<<std::flush;
 	A.orthogonalityCheck();
 
+	double frobeniusNorm = A.computeFrobeniusNorm();
+	if(comm_rank==0)
+		std::cout<<"Frobenius norm of orthogonalized matrix: "<<frobeniusNorm<<std::endl<<std::flush;
+
        }
 #ifdef USE_MAGMA
        magma_finalize();

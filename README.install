@@ -6,10 +6,10 @@ cmake ..
 make
 ```
 
-To use magma use 
+To use magma:
 ```
-cmake -DBUILD_ON_GPU=ON -DCMAKE_EXE_LINKER_FLAGS="${CUDA_LIB} -lcudart -lcudadevrt -lcublas -lcusparse " ..
+cmake -DBUILD_FOR_GPU=ON -DCMAKE_EXE_LINKER_FLAGS="${CUDA_LIB} -lcudart -lcudadevrt -lcublas -lcusparse" ..
 
-(see scripts/condo_gpu_cmake)
+(or call scripts/condo_gpu_cmake)
 
 Note: the appropriate modules may need to be loaded (openBLAS, cuda, magma,...)
