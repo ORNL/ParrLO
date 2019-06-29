@@ -397,12 +397,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 
 	magma_finalize();	
 #endif
-	/*std::cout<<"Printing hC:"<<std::endl;
-	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
-
-	/*delete[] hA;
-	delete[] hB;*/
 	delete[] hC;	
+	delete[] hCsum;	
 
 }
 
