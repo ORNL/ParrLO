@@ -9,9 +9,6 @@
  
 Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 
-	assert(n_rows_ >= 0);
-	assert(n_cols_ >= 0);
-          
         int comm_rank, comm_size;
         MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
@@ -61,8 +58,6 @@ void Matrix::operator=(const Matrix& B)
 {
 	//It performs only a local copy
 	assert(B.initialized());
-	assert(B.getNumRows()>=0);
-	assert(B.getNumCols()>=0);
 
 	n_rows_ = B.getNumRows();
 	n_cols_ = B.getNumCols();
@@ -79,8 +74,8 @@ double Matrix::operator()(const size_t i, const size_t j) const
 {
 	//For now it is only a local access and it assumes that different 
 	//matrices are partitioned the same way
-        assert(i>=0 & i<n_rows_local_);
-	assert(j>=0 & j<n_cols_);
+        assert(i<n_rows_local_);
+	assert(j<n_cols_);
 	
 	return data_[i+j*n_rows_local_];
 }
@@ -91,9 +86,6 @@ Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()),n_rows
 	//For now it is only a local access and it assumes that different 
 	//matrices are partitioned the same way
 	assert( B.getDataRawPtr()!=nullptr );
-	assert(n_rows_ >= 0);
-	assert(n_rows_local_ >= 0);
-	assert(n_cols_ >= 0);
 
 	for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_local_; ++i) {
@@ -165,11 +157,7 @@ size_t Matrix::getNumCols() const { return n_cols_;}
 
 std::vector<double> Matrix::getCopyData() const
 {
-	//assert( data_!=nullptr );
 	std::vector<double> data_copy; 
-
-        /*for(size_t index = 0; index < n_rows_*n_cols_; ++index)
-		data_copy[index] = data_[index];*/
 	data_copy = data_;
 
 	return data_copy;
@@ -178,12 +166,7 @@ std::vector<double> Matrix::getCopyData() const
 
 const double* Matrix::getDataRawPtr() const
 {
-	/*const double* data_ptr = data_.data();
-	assert( data_ptr!=nullptr );
-	double* data_copy = new double[n_rows_local_*n_cols_];
-
-        for(size_t index = 0; index < n_rows_local_*n_cols_; ++index)
-		data_copy[index] = data_ptr[index];*/
+	assert( data_.data()!=nullptr );
 
 	return data_.data();
 
@@ -191,7 +174,6 @@ const double* Matrix::getDataRawPtr() const
 
 void Matrix::printMatrix() const
 {
-// Currently it does not support MPI
 	assert(data_initialized_);
 
         int comm_rank, comm_size;
@@ -226,7 +208,7 @@ void Matrix::computeFrobeniusNorm()
 {
 
 // Currently does not support MPI
-	//assert(data_ != nullptr);
+	assert(data_.data() != nullptr);
 	assert(data_initialized_);
 
 	magma_init();
