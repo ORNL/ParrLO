@@ -158,7 +158,7 @@ size_t Matrix::getNumCols() const { return n_cols_;}
 std::vector<double> Matrix::getCopyData() const
 {
 	std::vector<double> data_copy; 
-	data_copy = data_;
+	std::copy(data_.begin(), data_.end(), data_copy.begin());
 
 	return data_copy;
 
