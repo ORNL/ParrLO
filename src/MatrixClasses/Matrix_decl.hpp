@@ -2,6 +2,7 @@
 #define MATRIX_DECL_HPP
 
 #include <memory> //needed for unique pointers
+#include <vector>
 #include <mpi.h>
 #ifdef USE_MAGMA
 #include "magma_v2.h"
@@ -12,7 +13,7 @@ class Matrix{
 	private:
 		size_t n_rows_;//number of rows
 		size_t n_cols_;//number of columns 
-		double* data_; //pointer to basic data structure
+		std::vector<double> data_; //pointer to basic data structure
 		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
                 size_t n_rows_local_;
                 std::vector<size_t> global_row_id_;   
@@ -28,7 +29,7 @@ class Matrix{
 		Matrix(Matrix&);
 
 		//Return whether a matrix has initialized data or not
-		bool Initialized() const;
+		bool initialized() const;
 
                 //Set entries of the matrix to zeros 
                 void zeroInitialize();
@@ -41,6 +42,7 @@ class Matrix{
 
                 //Routines to retrieve info about the size of a matrix
 		size_t getNumRows() const;
+		size_t getNumRowsLocal() const;
 		size_t getNumCols() const;
                 
 		//Overriding of assignment operator 
@@ -50,7 +52,8 @@ class Matrix{
 		double operator()(const size_t, const size_t) const ; 
 
 		//Routines to get a copy fo the data
-                double* getCopyData() const; //returns the pointer to a copy of the data
+                std::vector<double> getCopyData() const; //returns the vector copy of the data
+                const double* getDataRawPtr() const; //returns the pointer to a copy of the data
 
                 //Visudalization methods
 		void printMatrix() const; //It is used to visualize the matrix 
@@ -62,9 +65,10 @@ class Matrix{
 
 		//MAGMA ROUTINES
                 void orthogonalize(unsigned int, double);
-                void matrix_sum(Matrix&);
+		void orthogonalityCheck();
+                void matrixSum(Matrix&);
 
 		//FRIEND methods
-		friend Matrix matrix_matrix_multiply( const Matrix&, const Matrix& );
+		friend Matrix matrixMatrixMultiply( const Matrix&, const Matrix& );
 };
 #endif

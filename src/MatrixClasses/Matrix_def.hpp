@@ -9,9 +9,6 @@
  
 Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 
-	assert(n_rows_ >= 0);
-	assert(n_cols_ >= 0);
-          
         int comm_rank, comm_size;
         MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
@@ -23,31 +20,44 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
         local_row_id_.resize(n_rows_local_);
   
        //Matrix partitioner
-        for (size_t index = 1; index <= n_rows_local_; ++index)
-           {
-           local_row_id_[index-1]  = index -1;
+       //We assume that the prtitioning is only needed row-wise: entire rows are owned by a single MPI process
+        for (size_t index = 0; index < n_rows_local_; ++index)
+        {
+           local_row_id_[index]  = index;
             if(comm_rank+1<= n_rows_%comm_size) 
-              global_row_id_[index-1] = (comm_rank+1)*n_rows_local_+index-1;
-            else   
-              global_row_id_[index-1] = (floor(n_rows_/comm_size) +1)+(n_rows_%comm_size)+floor(n_rows_/comm_size)*(comm_rank-n_rows_%comm_size); 
-           }
+              global_row_id_[index] = (comm_rank)*n_rows_local_+index;
+            else
+            {
+	      //We need to count the number of MPI processes before this one that have less rows
+	      int prev_procs_less_rows = (comm_rank-n_rows_%comm_size);
 
-        data_ = new double[n_rows_local_ * n_cols_];
+	      //We count all the global rows that are cumulated before this MPI process
+              int all_prev_rows = (n_rows_local_+1)*(n_rows_%comm_size) + n_rows_local_ * prev_procs_less_rows; 
+
+	      //The global index for rows of this MPI process are the local indices shifted by the total number of rows anticipating this MPi process
+	      global_row_id_[index] = all_prev_rows + index;
+	    }
+        }
+
+	data_.resize(n_rows_local_ * n_cols_);
+        //data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
 
 
 } 
 
-bool Matrix::Initialized() const
+bool Matrix::initialized() const
 {
+	if(data_initialized_)
+		assert( data_.size()==n_rows_local_*n_cols_ );
+
 	return data_initialized_;
 }
 
 void Matrix::operator=(const Matrix& B)
 {
-	assert(B.Initialized());
-	assert(B.getNumRows()>=0);
-	assert(B.getNumCols()>=0);
+	//It performs only a local copy
+	assert(B.initialized());
 
 	n_rows_ = B.getNumRows();
 	n_cols_ = B.getNumCols();
@@ -62,19 +72,20 @@ void Matrix::operator=(const Matrix& B)
 
 double Matrix::operator()(const size_t i, const size_t j) const 
 {
-// currently does not work with MPI	
-        assert(i>=0 & i<n_rows_);
-	assert(j>=0 & j<n_cols_);
+	//For now it is only a local access and it assumes that different 
+	//matrices are partitioned the same way
+        assert(i<n_rows_local_);
+	assert(j<n_cols_);
 	
-	return data_[i+j*n_rows_];
+	return data_[i+j*n_rows_local_];
 }
 
 
-Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()){
+Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()),n_rows_local_(B.getNumRowsLocal()){
 
-	assert( B.getCopyData()!=NULL );
-	assert(n_rows_ >= 0);
-	assert(n_cols_ >= 0);
+	//For now it is only a local access and it assumes that different 
+	//matrices are partitioned the same way
+	assert( B.getDataRawPtr()!=nullptr );
 
 	for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_local_; ++i) {
@@ -89,12 +100,15 @@ Matrix::Matrix(Matrix& B):n_rows_(B.getNumRows()),n_cols_(B.getNumCols()){
 void Matrix::zeroInitialize(){
 
 	assert(!data_initialized_);
+	assert( data_.size()==n_rows_local_*n_cols_ );
 
-	for (size_t j = 0; j < n_cols_; ++j) {
+	/*for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_local_; ++i) {
 			data_[i+j*n_rows_local_] = 0.0;
 		}
-	}
+	}*/
+
+	data_.assign(n_rows_local_*n_cols_,0);
 
 	data_initialized_ = true;
 
@@ -138,37 +152,52 @@ void Matrix::randomInitialize(){
 } 
 
 size_t Matrix::getNumRows() const { return n_rows_;}
+size_t Matrix::getNumRowsLocal() const { return n_rows_local_;}
 size_t Matrix::getNumCols() const { return n_cols_;}
 
-double* Matrix::getCopyData() const
+std::vector<double> Matrix::getCopyData() const
 {
-	assert( data_!=NULL );
-	double* data_copy = new double[n_rows_*n_cols_]; 
-
-        for(size_t index = 0; index < n_rows_*n_cols_; ++index)
-		data_copy[index] = data_[index];
+	std::vector<double> data_copy; 
+	std::copy(data_.begin(), data_.end(), data_copy.begin());
 
 	return data_copy;
 
 }
 
+const double* Matrix::getDataRawPtr() const
+{
+	assert( data_.data()!=nullptr );
+
+	return data_.data();
+
+}
+
 void Matrix::printMatrix() const
 {
-// Currently it does not support MPI
 	assert(data_initialized_);
 
+        int comm_rank, comm_size;
+        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+
 #ifdef USE_MAGMA
-	std::cout<<"MAGMA version of print"<<std::endl;
+	if(comm_rank==0)
+		std::cout<<"MAGMA version of print"<<std::endl<<std::flush;
+
+	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl<<std::flush;
 	//magma_dprint(n_rows_, n_cols_, data_.get(), n_rows_);
-	magma_dprint(n_rows_, n_cols_, data_, n_rows_);
+	magma_dprint(n_rows_local_, n_cols_, this->getDataRawPtr(), n_rows_local_);
 #else		
-	std::cout<<"Basic implementation of print"<<std::endl;
+	if(comm_rank==0)
+		std::cout<<"Basic implementation of print"<<std::endl<<std::flush;
+
+	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl<<std::flush;
 	for (size_t j = 0; j < n_cols_; ++j) {
         	for (size_t i = 0; i < n_rows_; ++i) {
 			//*(data_ + i + j*n_rows_) = dis(gen);
-			std::cout<< data_[i+j*n_rows_]<< "\t";
+			std::cout<< data_[i+j*n_rows_]<< "\t"<<std::flush;
 		}
-		std::cout<<"\n"<<std::endl;
+		std::cout<<"\n"<<std::endl<<std::flush;
 	}
 
 #endif
@@ -179,7 +208,7 @@ void Matrix::computeFrobeniusNorm()
 {
 
 // Currently does not support MPI
-	assert(data_ != NULL);
+	assert(data_.data() != nullptr);
 	assert(data_initialized_);
 
 	magma_init();
@@ -229,8 +258,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	double beta = 0.0;
 	double* hC = new double[n_cols_ * n_cols_];
 	assert( hC != nullptr );
-	double* hA = this->getCopyData();
-	double* hB = this->getCopyData();
+	/*double* hA = this->getCopyRawPtrData();
+	double* hB = this->getCopyRawPtrData();*/
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
@@ -262,24 +291,32 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_queue_create( device, &queue );
 
 	// copy A to dA
-	magma_dsetmatrix( n_rows_local_, n_cols_, hA, lda, dA, ldda, queue );
-	magma_dsetmatrix( n_rows_local_, n_cols_, hB, ldb, dB, lddb, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), ldb, dB, lddb, queue );
 
 	/*std::cout<<"Printing hA:"<<std::endl;
 	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 	std::cout<<"Printing hB:"<<std::endl;
-	magma_dprint(n_rows_, n_cols_, hB, n_rows_);*/
-	/*std::cout<<"Printing dA:"<<std::endl;
+	magma_dprint(n_rows_, n_cols_, hB, n_rows_);
+	std::cout<<"Printing dA:"<<std::endl;
 	magma_dprint_gpu(ldda, n_cols_, dA, ldda, queue);
 	std::cout<<"Printing dB:"<<std::endl;
 	magma_dprint_gpu(lddb, n_cols_, dB, lddb, queue);*/
 	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
+	//std::cout<<"Printing dC:"<<std::endl;
+	//magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
+	/*std::cout<<"Printing hC:"<<std::endl;
+	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
         
         // sum hC over all processors
         
-        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	/*std::cout<<"Printing hCsum:"<<std::endl;
+	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
         magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
+	/*std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
+	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);*/
  
 	unsigned int count_iter = 0;
 	double relative_residual = 1.0;
@@ -290,7 +327,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dmalloc( &dwork, lddc );
 	double one_norm_value = magmablas_dlange (one_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
 	double inf_norm_value = magmablas_dlange (inf_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
-	std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
+	//std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
 
 	//Implementation of Schulz iteration
 
@@ -313,10 +350,10 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 
 	while(count_iter<max_iter & relative_residual>tol)
 	{
-		std::cout<<"Iteration count"<<count_iter<<std::endl;
+		//std::cout<<"Iteration count"<<count_iter<<std::endl;
 		// Compute ZY
 		magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,lddc,n_cols_,n_cols_,alpha,dZ,lddc,dY,lddc,beta,dZY,lddc,queue);	
-		magma_dprint_gpu(lddc, n_cols_, dZY, lddc, queue);
+		//magma_dprint_gpu(lddc, n_cols_, dZY, lddc, queue);
 
 		//Compute 3I-ZY
 		magma_dcopymatrix(lddc, n_cols_, dZY, lddc, dIntermediate, lddc, queue);
@@ -338,10 +375,18 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 		count_iter++;
 	}
 
+	//std::cout<<"Printing dA:"<<std::endl;
+	//magma_dprint_gpu(ldda, n_cols_, dA, lda, queue);
 	double* dAortho;
 	magma_dmalloc( &dAortho, ldda*n_cols_ );
-	magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,ldda,n_cols_,n_cols_,alpha,dA,ldda,dZ,n_cols_,beta,dAortho,ldda,queue);	
-	magma_dgetmatrix( n_rows_, n_cols_, dAortho, ldda, data_, lda, queue );
+	magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,ldda,n_cols_,n_cols_,alpha,dA,ldda,dZ,lddc,beta,dAortho,ldda,queue);	
+
+	magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &data_[0], lda, queue );
+
+	/*std::cout<<"Orthogonalized matrix dAortho:"<<std::endl;
+	magma_dprint_gpu(ldda, n_cols_, dAortho, lda, queue);
+	std::cout<<"Inverse square root:"<<std::endl;
+	magma_dprint_gpu(lddc, n_cols_, dZ, lddc, queue);*/
 
 	magma_free(dY);
 	magma_free(dZ);
@@ -360,13 +405,76 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	/*std::cout<<"Printing hC:"<<std::endl;
 	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
 
-	delete[] hA;
-	delete[] hB;
+	/*delete[] hA;
+	delete[] hB;*/
 	delete[] hC;	
 
 }
 
-void Matrix::matrix_sum(Matrix& B)
+void Matrix::orthogonalityCheck()
+{
+
+	size_t m = n_cols_;
+	size_t n = n_cols_;
+	size_t k = n_rows_local_;
+	double alpha = 1.0;
+	double beta = 0.0;
+	double* hC = new double[n_cols_ * n_cols_];
+	assert( hC != nullptr );
+	/*double* hA = this->getCopyRawPtrData();
+	double* hB = this->getCopyRawPtrData();*/
+	size_t lda = n_rows_local_;
+	size_t ldb = n_rows_local_;
+	size_t ldc = n_cols_;
+
+        double* hCsum  = new double[n_cols_ * n_cols_];
+
+#ifdef USE_MAGMA
+	magma_init();
+
+        magma_trans_t transA = MagmaTrans;
+	magma_trans_t transB = MagmaNoTrans;
+	double *dA, *dB, *dC;
+
+	size_t ldda = magma_roundup(n_rows_local_, 32);
+	size_t lddb = magma_roundup(n_rows_local_, 32);
+	size_t lddc = magma_roundup(n_cols_, 32);
+
+	magma_dmalloc( &dA, ldda*n_cols_ );
+	magma_dmalloc( &dB, lddb*n_cols_ );
+	magma_dmalloc( &dC, lddc*n_cols_ );
+
+	assert( dA != nullptr );
+	assert( dB != nullptr );
+	assert( dC != nullptr );
+
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+	// copy A to dA
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), lda, dA, ldda, queue );
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), ldb, dB, lddb, queue );
+
+	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
+	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
+        
+        // sum hC over all processors
+        
+        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	/*std::cout<<"Printing hCsum:"<<std::endl;
+	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
+        magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
+	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
+	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
+
+#endif
+
+}
+
+
+void Matrix::matrixSum(Matrix& B)
 {
 
 	assert(n_rows_ == B.getNumRows());
@@ -375,7 +483,7 @@ void Matrix::matrix_sum(Matrix& B)
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 
-	double* hA = this->getCopyData();
+	//double* hA = this->getCopyRawPtrData();
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 #ifdef USE_MAGMA
@@ -391,16 +499,18 @@ void Matrix::matrix_sum(Matrix& B)
 
 	double *dA;
 	magma_dmalloc( &dA, ldda * n_cols_ );
-	magma_dsetmatrix( n_rows_local_, n_cols_, hA, n_rows_local_, dA, ldda, queue );
-	//std::cout<<"Printing dA: "<<std::endl;
-	//magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);
+	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), n_rows_local_, dA, ldda, queue );
+	/*std::cout<<"Printing dA before sum: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);*/
 	double *dB;
 	magma_dmalloc( &dB, lddb * n_cols_ );
-	magma_dsetmatrix( n_rows_local_, n_cols_, B.getCopyData(), n_rows_local_, dB, lddb, queue );
-	//std::cout<<"Printing dB: "<<std::endl;
-	//magma_dprint_gpu(n_rows_, n_cols_, dB, lddb, queue);
+	magma_dsetmatrix( n_rows_local_, n_cols_, B.getDataRawPtr(), n_rows_local_, dB, lddb, queue );
+	/*std::cout<<"Printing dB: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dB, lddb, queue);*/
         magmablas_dgeadd (ldda, n_cols_, 1.0, dB, lddb, dA, ldda, queue);
-	magma_dgetmatrix( n_rows_local_, n_cols_, dA, ldda, data_, n_rows_local_, queue );
+	magma_dgetmatrix( n_rows_local_, n_cols_, dA, ldda, &data_[0], n_rows_local_, queue );
+	/*std::cout<<"Printing dA after sum: "<<std::endl;
+	magma_dprint_gpu(n_rows_, n_cols_, dA, ldda, queue);*/
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 	magma_free(dA);
