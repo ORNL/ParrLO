@@ -211,7 +211,7 @@ void Matrix::computeFrobeniusNorm()
 	assert(data_.data() != nullptr);
 	assert(data_initialized_);
 
-	magma_init();
+//	magma_init();
 	double *dA;
 	size_t ldda = magma_roundup(n_rows_, 32);
 	magma_dmalloc( &dA, ldda*n_cols_ );
@@ -233,7 +233,7 @@ void Matrix::computeFrobeniusNorm()
 	std::cout<<"Computed One Norm: "<<one_norm_value<<std::endl;
 	std::cout<<"Computed Inf Norm: "<<inf_norm_value<<std::endl;
 	std::cout<<"Computed Upper Bound for Frobenius Norm: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
-	magma_finalize();
+//	magma_finalize();
 
 }
 
@@ -267,7 +267,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
         double* hCsum  = new double[n_cols_ * n_cols_];
 
 #ifdef USE_MAGMA
-	magma_init();
+//	magma_init();
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
@@ -400,7 +400,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_free(dB);
 	magma_free(dC);
 
-	magma_finalize();	
+//	magma_finalize();	
 #endif
 	/*std::cout<<"Printing hC:"<<std::endl;
 	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
@@ -430,7 +430,7 @@ void Matrix::orthogonalityCheck()
         double* hCsum  = new double[n_cols_ * n_cols_];
 
 #ifdef USE_MAGMA
-	magma_init();
+//	magma_init();
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
@@ -487,7 +487,7 @@ void Matrix::matrixSum(Matrix& B)
 	//std::cout<<"Printing hA: "<<std::endl;
 	//magma_dprint(n_rows_, n_cols_, hA, n_rows_);
 #ifdef USE_MAGMA
-        magma_init();
+//        magma_init();
 
 	magma_queue_t queue;
 	int device;
@@ -516,7 +516,7 @@ void Matrix::matrixSum(Matrix& B)
 	magma_free(dA);
 	magma_free(dB);
 
-	magma_finalize();
+//	magma_finalize();
 //if MAGMA not used reimplement access operator
 #else
 	for (size_t j = 0; j < n_cols_; ++j) {
