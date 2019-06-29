@@ -74,7 +74,7 @@ int main(int argc, char **argv)
         A.printMatrix();
 	sleep(3);
 //	A.computeFrobeniusNorm();
-	//A.matrix_sum();
+	//A.matrixSum();
 	//
 
 	A.orthogonalize(5, 0.1);
