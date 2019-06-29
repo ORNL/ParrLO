@@ -204,37 +204,21 @@ void Matrix::printMatrix() const
 
 } 
 
-void Matrix::computeFrobeniusNorm()
+double Matrix::computeFrobeniusNorm()
 {
-
-// Currently does not support MPI
 	assert(data_.data() != nullptr);
-	assert(data_initialized_);
 
-	magma_init();
-	double *dA;
-	size_t ldda = magma_roundup(n_rows_, 32);
-	magma_dmalloc( &dA, ldda*n_cols_ );
-	assert( dA != nullptr );
+        int comm_rank, comm_size;
+        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
-	magma_queue_t queue;
-	int device;
-	magma_getdevice( &device );
-	magma_queue_create( device, &queue );
+	double frobSum = 0.0;
+	double frobSumAll = 0.0;
+	double frobNorm = 0.0;
 
-	//The computation of the infinity norm is not supported yet in MAGMA
-	//But we know that ||A||_F <= sqrt( ||A||_1 * ||A||_inf )
-	magma_norm_t one_norm = MagmaOneNorm;
-	magma_norm_t inf_norm = MagmaInfNorm;
-	double *dwork;
-	magma_dmalloc( &dwork, ldda );
-	double one_norm_value = magmablas_dlange (one_norm, n_rows_, n_cols_, dA, ldda, dwork, ldda, queue);
-	double inf_norm_value = magmablas_dlange (inf_norm, n_rows_, n_cols_, dA, ldda, dwork, ldda, queue);
-	std::cout<<"Computed One Norm: "<<one_norm_value<<std::endl;
-	std::cout<<"Computed Inf Norm: "<<inf_norm_value<<std::endl;
-	std::cout<<"Computed Upper Bound for Frobenius Norm: "<<std::sqrt(one_norm_value * inf_norm_value)<<std::endl;
-	magma_finalize();
-
+	std::for_each( data_.begin(),data_.end(), [&frobSum](double x){frobSum += x*x;});	
+        MPI_Allreduce(&frobSum, &frobSumAll, 1 , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	frobNorm = std::sqrt(frobSumAll);
 }
 
 
@@ -322,7 +306,6 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dmalloc( &dwork, lddc );
 	double one_norm_value = magmablas_dlange (one_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
 	double inf_norm_value = magmablas_dlange (inf_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
-	//std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
 
 	//Implementation of Schulz iteration
 

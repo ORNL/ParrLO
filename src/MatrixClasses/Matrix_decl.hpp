@@ -59,7 +59,7 @@ class Matrix{
                 //Visudalization methods
 		void printMatrix() const; //It is used to visualize the matrix 
 
-		void computeFrobeniusNorm();
+		double computeFrobeniusNorm();
 
                 //Scaling
                 void scaleMatrix(double);
