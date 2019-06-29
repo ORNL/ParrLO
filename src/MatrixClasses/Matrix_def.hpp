@@ -49,7 +49,7 @@ Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
 
 } 
 
-bool Matrix::Initialized() const
+bool Matrix::initialized() const
 {
 	if(data_initialized_)
 		assert( data_.size()==n_rows_local_*n_cols_ );
@@ -60,7 +60,7 @@ bool Matrix::Initialized() const
 void Matrix::operator=(const Matrix& B)
 {
 	//It performs only a local copy
-	assert(B.Initialized());
+	assert(B.initialized());
 	assert(B.getNumRows()>=0);
 	assert(B.getNumCols()>=0);
 
@@ -492,7 +492,7 @@ void Matrix::orthogonalityCheck()
 }
 
 
-void Matrix::matrix_sum(Matrix& B)
+void Matrix::matrixSum(Matrix& B)
 {
 
 	assert(n_rows_ == B.getNumRows());

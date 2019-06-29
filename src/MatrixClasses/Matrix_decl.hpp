@@ -29,7 +29,7 @@ class Matrix{
 		Matrix(Matrix&);
 
 		//Return whether a matrix has initialized data or not
-		bool Initialized() const;
+		bool initialized() const;
 
                 //Set entries of the matrix to zeros 
                 void zeroInitialize();
@@ -66,9 +66,9 @@ class Matrix{
 		//MAGMA ROUTINES
                 void orthogonalize(unsigned int, double);
 		void orthogonalityCheck();
-                void matrix_sum(Matrix&);
+                void matrixSum(Matrix&);
 
 		//FRIEND methods
-		friend Matrix matrix_matrix_multiply( const Matrix&, const Matrix& );
+		friend Matrix matrixMatrixMultiply( const Matrix&, const Matrix& );
 };
 #endif

@@ -61,13 +61,13 @@ int main(int argc, char **argv)
 	if(comm_rank==0)
 		std::cout<<"A+B"<<std::endl<<std::flush;
 
-        A.matrix_sum(B);
+        A.matrixSum(B);
 	MPI_Barrier(MPI_COMM_WORLD);
 	sleep(3);
         A.printMatrix();
 	sleep(3);
 //	A.computeFrobeniusNorm();
-	//A.matrix_sum();
+	//A.matrixSum();
 	//
 
 	A.orthogonalize(5, 0.1);
