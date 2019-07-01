@@ -7,15 +7,16 @@
 #include <cassert>
 #include <cmath>
  
-Matrix::Matrix(size_t n, size_t m):n_rows_(n),n_cols_(m){
+Matrix::Matrix(size_t n, size_t m,MPI_Comm comm ):n_rows_(n),n_cols_(m),lacomm(comm){
 
+      
+        
         int comm_rank, comm_size;
-        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        MPI_Comm_rank(lacomm, &comm_rank);
+        MPI_Comm_size(lacomm, &comm_size);
         n_rows_local_=floor(n_rows_/comm_size);
         if(comm_rank+1 <= n_rows_ %comm_size)
            n_rows_local_++ ;
-         
         global_row_id_.resize(n_rows_local_);
         local_row_id_.resize(n_rows_local_);
   
@@ -175,10 +176,9 @@ const double* Matrix::getDataRawPtr() const
 void Matrix::printMatrix() const
 {
 	assert(data_initialized_);
-
         int comm_rank, comm_size;
-        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        MPI_Comm_rank(lacomm, &comm_rank);
+        MPI_Comm_size(lacomm, &comm_size);
 
 #ifdef USE_MAGMA
 	if(comm_rank==0)
@@ -289,8 +289,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
         
         // sum hC over all processors
-        
-        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm);
 	/*std::cout<<"Printing hCsum:"<<std::endl;
 	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
         magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
@@ -306,6 +305,7 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dmalloc( &dwork, lddc );
 	double one_norm_value = magmablas_dlange (one_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
 	double inf_norm_value = magmablas_dlange (inf_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
+	//std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
 
 	//Implementation of Schulz iteration
 
@@ -436,8 +436,7 @@ void Matrix::orthogonalityCheck()
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
         
         // sum hC over all processors
-        
-        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm);
 	/*std::cout<<"Printing hCsum:"<<std::endl;
 	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
         magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
