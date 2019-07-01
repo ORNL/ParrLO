@@ -9,22 +9,29 @@
 #include "magma_v2.h"
 #endif
 
+
+
+
+
 class Matrix{	
 
 	private:
 		size_t n_rows_;//number of rows
 		size_t n_cols_;//number of columns 
+                MPI_Comm lacomm;
 		std::vector<double> data_; //pointer to basic data structure
 		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
                 size_t n_rows_local_;
                 std::vector<size_t> global_row_id_;   
                 std::vector<size_t> local_row_id_;
 		bool data_initialized_ = false; 
+  
 
         public:
 
+
                 //Constructor
-                Matrix(size_t, size_t); //basic constructor
+                Matrix(size_t, size_t, MPI_Comm); //basic constructor
 
 		//Copy constructor
 		Matrix(Matrix&);
