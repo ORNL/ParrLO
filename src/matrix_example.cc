@@ -19,6 +19,7 @@ int main(int argc, char **argv)
         }else{
 
         MPI_Comm lacomm;      
+       
         MPI_Comm_dup(MPI_COMM_WORLD, &lacomm); 
 
 	MPI_Barrier(lacomm);
