@@ -209,15 +209,15 @@ double Matrix::computeFrobeniusNorm()
 	assert(data_.data() != nullptr);
 
         int comm_rank, comm_size;
-        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        MPI_Comm_rank(lacomm, &comm_rank);
+        MPI_Comm_size(lacomm, &comm_size);
 
 	double frobSum = 0.0;
 	double frobSumAll = 0.0;
 	double frobNorm = 0.0;
 
 	std::for_each( data_.begin(),data_.end(), [&frobSum](double x){frobSum += x*x;});	
-        MPI_Allreduce(&frobSum, &frobSumAll, 1 , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&frobSum, &frobSumAll, 1 , MPI_DOUBLE, MPI_SUM, lacomm);
 	frobNorm = std::sqrt(frobSumAll);
 }
 
