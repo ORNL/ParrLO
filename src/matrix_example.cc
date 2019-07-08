@@ -38,13 +38,7 @@ int main(int argc, char **argv)
        
         Matrix A(matrix_dim,matrix_dim,lacomm);
         Matrix B(matrix_dim,matrix_dim,lacomm);
-
-	if(comm_rank==0)
-		std::cout<<"Initialization of A"<<std::endl<<std::flush;
-
-	sleep(3);
 	MPI_Barrier(lacomm);
-
 
 //	A.zeroInitialize();
 	A.randomInitialize();

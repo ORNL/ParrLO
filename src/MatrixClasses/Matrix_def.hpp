@@ -8,7 +8,7 @@
 #include <cmath>
  
 Matrix::Matrix(size_t n, size_t m,MPI_Comm comm ):n_rows_(n),n_cols_(m),lacomm(comm){
- 
+
         int comm_rank, comm_size;
         MPI_Comm_rank(lacomm, &comm_rank);
         MPI_Comm_size(lacomm, &comm_size);
