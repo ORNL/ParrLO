@@ -9,8 +9,6 @@
  
 Matrix::Matrix(size_t n, size_t m,MPI_Comm comm ):n_rows_(n),n_cols_(m),lacomm(comm){
 
-      
-        
         int comm_rank, comm_size;
         MPI_Comm_rank(lacomm, &comm_rank);
         MPI_Comm_size(lacomm, &comm_size);
@@ -41,7 +39,6 @@ Matrix::Matrix(size_t n, size_t m,MPI_Comm comm ):n_rows_(n),n_cols_(m),lacomm(c
         }
 
 	data_.resize(n_rows_local_ * n_cols_);
-        //data_ = new double[n_rows_local_ * n_cols_];
         //data_.reset( new double[n_rows_ * n_cols_] );
 
 
@@ -158,7 +155,7 @@ size_t Matrix::getNumCols() const { return n_cols_;}
 
 std::vector<double> Matrix::getCopyData() const
 {
-	std::vector<double> data_copy; 
+	std::vector<double> data_copy(data_.size(), 0.0); 
 	std::copy(data_.begin(), data_.end(), data_copy.begin());
 
 	return data_copy;
@@ -237,32 +234,30 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	double beta = 0.0;
 	double* hC = new double[n_cols_ * n_cols_];
 	assert( hC != nullptr );
-	/*double* hA = this->getCopyRawPtrData();
-	double* hB = this->getCopyRawPtrData();*/
 	size_t lda = n_rows_local_;
 	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
 
-        double* hCsum  = new double[n_cols_ * n_cols_];
-
 #ifdef USE_MAGMA
-//	magma_init();
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
-	double *dA, *dB, *dC;
+	double *dA, *dB, *dC, *dZ;
 
 	size_t ldda = magma_roundup(n_rows_local_, 32);
 	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
+	size_t lddz = magma_roundup(n_cols_, 32);
 
 	magma_dmalloc( &dA, ldda*n_cols_ );
 	magma_dmalloc( &dB, lddb*n_cols_ );
 	magma_dmalloc( &dC, lddc*n_cols_ );
+	magma_dmalloc( &dZ, lddc*n_cols_ );
 
 	assert( dA != nullptr );
 	assert( dB != nullptr );
 	assert( dC != nullptr );
+	assert( dZ != nullptr );
 
 	magma_queue_t queue;
 	int device;
@@ -273,116 +268,30 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), lda, dA, ldda, queue );
 	magma_dsetmatrix( n_rows_local_, n_cols_, this->getDataRawPtr(), ldb, dB, lddb, queue );
 
-	/*std::cout<<"Printing hA:"<<std::endl;
-	magma_dprint(n_rows_, n_cols_, hA, n_rows_);
-	std::cout<<"Printing hB:"<<std::endl;
-	magma_dprint(n_rows_, n_cols_, hB, n_rows_);
-	std::cout<<"Printing dA:"<<std::endl;
-	magma_dprint_gpu(ldda, n_cols_, dA, ldda, queue);
-	std::cout<<"Printing dB:"<<std::endl;
-	magma_dprint_gpu(lddb, n_cols_, dB, lddb, queue);*/
 	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
-	//std::cout<<"Printing dC:"<<std::endl;
-	//magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, hC, ldc, queue );
-	/*std::cout<<"Printing hC:"<<std::endl;
-	magma_dprint(n_cols_, n_cols_, hC, n_cols_);*/
+
+	std::vector<double> hCvector(hC, hC + n_cols_*n_cols_); 
+	Replicated AtA(hCvector, lacomm);
+	AtA.Schulz(10, 0.01);
+	std::vector<double> Z = AtA.getCopyData();
+	magma_dsetmatrix( n_cols_, n_cols_, &Z[0], n_cols_, dZ, lddz, queue );
         
-        // sum hC over all processors
-        MPI_Allreduce(hC, hCsum, n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm);
-	/*std::cout<<"Printing hCsum:"<<std::endl;
-	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
-        magma_dsetmatrix( n_cols_, n_cols_, hCsum, ldc, dC, lddc, queue );
-	/*std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
-	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);*/
- 
-	unsigned int count_iter = 0;
-	double relative_residual = 1.0;
-
-	magma_norm_t one_norm = MagmaOneNorm;
-	magma_norm_t inf_norm = MagmaInfNorm;
-	double *dwork;
-	magma_dmalloc( &dwork, lddc );
-	double one_norm_value = magmablas_dlange (one_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
-	double inf_norm_value = magmablas_dlange (inf_norm, n_cols_, n_cols_, dC, lddc, dwork, lddc, queue);
-	//std::cout<<"Computed Upper Bound for Frobenius Norm of A^T*A: "<<sqrt(one_norm_value * inf_norm_value)<<std::endl;
-
-	//Implementation of Schulz iteration
-
-	double* dI;
-	double *dY, *dYaux;
-	double *dZ, *dZaux;
-	double* dZY;
-	double* dIntermediate;
-	magma_dmalloc( &dI, lddc*n_cols_ );
-	magma_dmalloc( &dY, lddc*n_cols_ );
-	magma_dmalloc( &dZ, lddc*n_cols_ );
-	magma_dmalloc( &dYaux, lddc*n_cols_ );
-	magma_dmalloc( &dZaux, lddc*n_cols_ );
-	magma_dmalloc( &dZY, lddc*n_cols_ );
-	magma_dmalloc( &dIntermediate, lddc*n_cols_ );
-
-	magmablas_dlaset(MagmaFull, lddc, n_cols_, 0.0, 1.0, dI, lddc, queue);
-	magma_dcopymatrix(lddc, n_cols_, dC, lddc, dY, lddc, queue);
-	magmablas_dlaset(MagmaFull, lddc, n_cols_, 0.0, 1.0, dZ, lddc, queue);
-
-	while(count_iter<max_iter & relative_residual>tol)
-	{
-		//std::cout<<"Iteration count"<<count_iter<<std::endl;
-		// Compute ZY
-		magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,lddc,n_cols_,n_cols_,alpha,dZ,lddc,dY,lddc,beta,dZY,lddc,queue);	
-		//magma_dprint_gpu(lddc, n_cols_, dZY, lddc, queue);
-
-		//Compute 3I-ZY
-		magma_dcopymatrix(lddc, n_cols_, dZY, lddc, dIntermediate, lddc, queue);
-		magmablas_dgeadd2(lddc, n_cols_, 3.0, dI, lddc, -1.0, dIntermediate, lddc, queue);
-
-		//Compute Y(3I-ZY)
-		magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,lddc,n_cols_,n_cols_,alpha,dY,lddc,dIntermediate,lddc,beta,dYaux,lddc,queue);	
-
-		//Compute (3I-ZY)Z
-		magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,lddc,n_cols_,n_cols_,alpha,dIntermediate,lddc,dZ,lddc,beta,dZaux,lddc,queue);	
-
-		//Rescale by 1/2
-		int val = 0;
-                magmablas_dlascl(MagmaFull, 0, 0, 2.0, 1.0, lddc, n_cols_, dYaux, lddc, queue, &val);
-                magmablas_dlascl(MagmaFull, 0, 0, 2.0, 1.0, lddc, n_cols_, dZaux, lddc, queue, &val);
-		magma_dcopymatrix(lddc, n_cols_, dYaux, lddc, dY, lddc, queue);
-		magma_dcopymatrix(lddc, n_cols_, dZaux, lddc, dZ, lddc, queue);
-
-		count_iter++;
-	}
-
-	//std::cout<<"Printing dA:"<<std::endl;
-	//magma_dprint_gpu(ldda, n_cols_, dA, lda, queue);
 	double* dAortho;
 	magma_dmalloc( &dAortho, ldda*n_cols_ );
 	magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,ldda,n_cols_,n_cols_,alpha,dA,ldda,dZ,lddc,beta,dAortho,ldda,queue);	
 
 	magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &data_[0], lda, queue );
 
-	/*std::cout<<"Orthogonalized matrix dAortho:"<<std::endl;
-	magma_dprint_gpu(ldda, n_cols_, dAortho, lda, queue);
-	std::cout<<"Inverse square root:"<<std::endl;
-	magma_dprint_gpu(lddc, n_cols_, dZ, lddc, queue);*/
-
-	magma_free(dY);
 	magma_free(dZ);
-	magma_free(dYaux);
-	magma_free(dZaux);
-	magma_free(dZY);
-	magma_free(dIntermediate);
 
 	magma_free(dA);
 	magma_free(dAortho);
 	magma_free(dB);
 	magma_free(dC);
-	magma_free(dwork);
 
-//	magma_finalize();	
 #endif
 	delete[] hC;	
-	delete[] hCsum;	
 
 }
 
