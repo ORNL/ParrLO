@@ -5,11 +5,11 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
-
+#include <cmath>
 
 int main(int argc, char** argv)
 {
-    // read in an int (dimension of matrix)
+    // dimension of matrix
     const int n = 10;
     const int n2 = n*n;
 
@@ -66,16 +66,14 @@ int main(int argc, char** argv)
 
     magma_dprint(n,n,&v1[0],n);    
 
+    const double tol = 1.e-12;
     for (auto ii : v1)
     { 
-     if(v1[ii]==3)
-     { 
-      std::cout<<"COMPUTATION SUCCESS"<<std::endl;  
-      return 0;
-     }else{   
-      std::cout<<"COMPUTATION FAIL"<<std::endl; 
-      return 1;
-     } 
+        if(std::abs(v1[ii]-3.)>tol)
+        {
+            std::cout<<"TEST FAILED"<<std::endl;
+            return 1;
+        }
     }
  
     magma_queue_destroy(queue);
@@ -94,6 +92,8 @@ int main(int argc, char** argv)
         std::cout<<"MAGMA FINALIZE FAILS HOST ALLOC"<<std::endl;
        return 1; 
     }
+
+    std::cout<<"TEST SUCCESSFUL"<<std::endl;
 
 #endif
 
