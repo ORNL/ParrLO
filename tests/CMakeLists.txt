@@ -32,3 +32,10 @@ else()
       CXX_STANDARD_REQUIRED ON)
   endforeach()
 endif()
+
+add_test(NAME testMPI
+         COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4
+         ${CMAKE_CURRENT_BINARY_DIR}/testMPI)
+
+add_test(NAME testMAGMA
+         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/testMAGMA 10)
