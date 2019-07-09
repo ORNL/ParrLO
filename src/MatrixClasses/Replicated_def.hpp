@@ -7,15 +7,11 @@
 #include <cassert>
 #include <cmath>
  
-Replicated::Replicated(std::vector<double>& aTa, MPI_Comm comm):lacomm(comm){
+Replicated::Replicated(std::vector<double>& aTa, MPI_Comm comm):lacomm_(comm){
 
 	dim_ = std::sqrt(aTa.size());
-        int comm_rank, comm_size;
-        MPI_Comm_rank(lacomm, &comm_rank);
-        MPI_Comm_size(lacomm, &comm_size);
 
 	data_.resize(dim_*dim_);
-
 	std::copy(aTa.begin(), aTa.end(), data_.begin());
   
 } 
@@ -52,25 +48,25 @@ void Replicated::printMatrix() const
 {
 	assert(data_initialized_);
         int comm_rank, comm_size;
-        MPI_Comm_rank(lacomm, &comm_rank);
-        MPI_Comm_size(lacomm, &comm_size);
+        MPI_Comm_rank(lacomm_, &comm_rank);
+        MPI_Comm_size(lacomm_, &comm_size);
 
 #ifdef USE_MAGMA
 	if(comm_rank==0)
-		std::cout<<"MAGMA version of print"<<std::endl<<std::flush;
+		std::cout<<"MAGMA version of print"<<std::endl;
 
-	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl<<std::flush;
+	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl;
 	magma_dprint(dim_, dim_, this->getDataRawPtr(), dim_);
 #else		
 	if(comm_rank==0)
-		std::cout<<"Basic implementation of print"<<std::endl<<std::flush;
+		std::cout<<"Basic implementation of print"<<std::endl;
 
-	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl<<std::flush;
+	std::cout<<"MPI process: "<<comm_rank<<" of "<<comm_size<<std::endl;
 	for (size_t j = 0; j < dim_; ++j) {
         	for (size_t i = 0; i < n_rows_; ++i) {
-			std::cout<< data_[i+j*n_rows_]<< "\t"<<std::flush;
+			std::cout<< data_[i+j*n_rows_]<< "\t";
 		}
-		std::cout<<"\n"<<std::endl<<std::flush;
+		std::cout<<"\n"<<std::endl;
 	}
 
 #endif
@@ -80,10 +76,6 @@ void Replicated::printMatrix() const
 double Replicated::computeFrobeniusNorm()
 {
 	assert(data_.data() != nullptr);
-
-        int comm_rank, comm_size;
-        MPI_Comm_rank(lacomm, &comm_rank);
-        MPI_Comm_size(lacomm, &comm_size);
 
 	double frobSum = 0.0;
 	double frobNorm = 0.0;
@@ -99,7 +91,7 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 	double beta = 0.0;
 	size_t ldc = dim_;
 
-        double* hCsum  = new double[dim_ * dim_];
+        std::vector<double> hCsum(dim_*dim_, 0.0);
 
 #ifdef USE_MAGMA
 	double *dC;
@@ -107,12 +99,12 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 	size_t lddc = magma_roundup(dim_, 32);
 	magma_dmalloc( &dC, lddc*dim_ );
 
-        MPI_Allreduce(&data_[0], hCsum, dim_*dim_ , MPI_DOUBLE, MPI_SUM, lacomm);
+        MPI_Allreduce(&data_[0], &hCsum[0], dim_*dim_ , MPI_DOUBLE, MPI_SUM, lacomm_);
 	magma_queue_t queue;
 	int device;
 	magma_getdevice( &device );
 	magma_queue_create( device, &queue );
-        magma_dsetmatrix( dim_, dim_, hCsum, ldc, dC, lddc, queue );
+        magma_dsetmatrix( dim_, dim_, &hCsum[0], ldc, dC, lddc, queue );
  
 	unsigned int count_iter = 0;
 	double relative_residual = 1.0;
@@ -185,7 +177,6 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 
 //	magma_finalize();	
 #endif
-	delete[] hCsum;	
 
 }
 
