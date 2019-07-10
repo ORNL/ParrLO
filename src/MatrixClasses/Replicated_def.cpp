@@ -1,6 +1,3 @@
-#ifndef REPLICATED_DEF_HPP
-#define REPLICATED_DEF_HPP
-
 #include <random>
 #include "Replicated_decl.hpp"
 #include <iostream>
@@ -181,4 +178,3 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 }
 
 
-#endif

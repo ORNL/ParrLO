@@ -5,7 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <mpi.h>
-#include "Replicated_def.hpp"
+#include "Replicated_decl.hpp"
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
