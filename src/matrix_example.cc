@@ -1,4 +1,4 @@
-#include "MatrixClasses/Matrix_def.hpp"
+#include "MatrixClasses/Matrix_decl.hpp"
 #include <mpi.h>
 #include <iostream>
 #include <unistd.h>
