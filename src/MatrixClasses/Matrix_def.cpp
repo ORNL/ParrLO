@@ -305,8 +305,19 @@ double Matrix::computeFrobeniusNorm()
 
 void Matrix::scaleMatrix(double scale_factor)
 {
+#ifdef USE_MAGMA
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+	size_t ldda = magma_roundup(n_rows_local_, 32);
+	magma_dscal (ldda*n_cols_, scale_factor, device_data_, 1, queue);
+	this->transferDataGPUtoCPU();
+#else
 	std::transform(host_data_.begin(), host_data_.end(), host_data_.begin(),
                    [scale_factor](double alpha){ return scale_factor * alpha; });
+#endif
 }
 
 void Matrix::orthogonalize(unsigned int max_iter, double tol)
