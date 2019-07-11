@@ -15,23 +15,33 @@ class Matrix{
 	private:
 		size_t n_rows_;//number of rows
 		size_t n_cols_;//number of columns 
-                MPI_Comm lacomm;
-		std::vector<double> data_; //pointer to basic data structure
-		//std::unique_ptr<double[]> data_; //I want to avoid that the original data gets corrupted
+                MPI_Comm lacomm_;
+		std::vector<double> host_data_; //vector for data on host
+		double* device_data_; //pointer to basic data structure on gpu
+		//std::unique_ptr<double[]> host_data_; //I want to avoid that the original data gets corrupted
                 size_t n_rows_local_;
                 std::vector<size_t> global_row_id_;   
                 std::vector<size_t> local_row_id_;
-		bool data_initialized_ = false; 
+		bool host_data_initialized_ = false; 
+		bool device_data_initialized_ = false;
   
 
         public:
-
 
                 //Constructor
                 Matrix(size_t, size_t, MPI_Comm); //basic constructor
 
 		//Copy constructor
 		Matrix(Matrix&);
+
+		//Destructor must be explicitly implemented to free memory on gpu
+		~Matrix();
+
+		//Transfer data frok CPU to GPU
+		void transferDataCPUtoGPU();
+
+		//Transfer data frok GPU to CPU
+		void transferDataGPUtoCPU();
 
 		//Return whether a matrix has initialized data or not
 		bool initialized() const;
@@ -57,8 +67,11 @@ class Matrix{
 		double operator()(const size_t, const size_t) const ; 
 
 		//Routines to get a copy fo the data
-                std::vector<double> getCopyData() const; //returns the vector copy of the data
-                const double* getDataRawPtr() const; //returns the pointer to a copy of the data
+                std::vector<double> getCopyHostData() const; //returns the vector copy of the data
+                const double* getHostDataRawPtr() const; //returns the raw pointer to the data on the host
+                const double* getDeviceDataRawPtr() const; //returns the pointer to the data on the device
+                double* getHostDataRawPtrNonConst(); //returns the raw pointer to the data on the host
+                double* getDeviceDataRawPtrNonConst(); //returns the pointer to the data on the device
 
                 //Visudalization methods
 		void printMatrix() const; //It is used to visualize the matrix 

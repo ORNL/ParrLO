@@ -7,9 +7,6 @@
 #define USE_MAGMA
 #endif
 
-
-
-
 int main(int argc, char **argv)
 {
 
@@ -34,7 +31,7 @@ int main(int argc, char **argv)
 #else
 
 #endif
-	int matrix_dim = 10;
+	int matrix_dim = 2;
        
         Matrix A(matrix_dim,matrix_dim,lacomm);
         Matrix B(matrix_dim,matrix_dim,lacomm);
@@ -42,7 +39,7 @@ int main(int argc, char **argv)
 
 //	A.zeroInitialize();
 	A.randomInitialize();
-        //A.printMatrix();
+        A.printMatrix();
 
 	sleep(3);
 	MPI_Barrier(lacomm);
@@ -60,7 +57,7 @@ int main(int argc, char **argv)
 		std::cout<<"Initialization of B"<<std::endl<<std::flush;
 
 	B.identityInitialize();
-        //B.printMatrix();
+        B.printMatrix();
 	sleep(3);
 	
 	MPI_Barrier(lacomm);
@@ -77,13 +74,14 @@ int main(int argc, char **argv)
 	//A.matrixSum();
 	//
 
-	A.orthogonalize(5, 0.1);
+	A.transferDataCPUtoGPU();
+	A.orthogonalize(10, 0.1);
 
 	MPI_Barrier(lacomm);
 	sleep(3);
 	if(comm_rank==0)
 		std::cout<<"Orthogonalized A"<<std::endl<<std::flush;
-        //A.printMatrix();
+        A.printMatrix();
 
 	if(comm_rank==0)
 		std::cout<<"Orthogonality check A"<<std::endl<<std::flush;
@@ -92,7 +90,7 @@ int main(int argc, char **argv)
 	double frobeniusNorm = A.computeFrobeniusNorm();
 	if(comm_rank==0)
 		std::cout<<"Frobenius norm of orthogonalized matrix: "<<frobeniusNorm<<std::endl<<std::flush;
-        
+  
        MPI_Comm_free(&lacomm);
        }
 #ifdef USE_MAGMA
