@@ -350,17 +350,15 @@ void Matrix::sumAllProcesses()
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
-	double *dA, *dB, *dC;
+	double *dC;
 
 	size_t ldda = magma_roundup(n_rows_local_, 32);
 	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
 
-	magma_dmalloc( &dB, lddb*n_cols_ );
 	magma_dmalloc( &dC, lddc*n_cols_ );
 	magma_dmalloc( &replicated_S_, lddc*n_cols_ );
 
-	assert( dB != nullptr );
 	assert( dC != nullptr );
 
 	magma_queue_t queue;
@@ -368,19 +366,19 @@ void Matrix::sumAllProcesses()
 	magma_getdevice( &device );
 	magma_queue_create( device, &queue );
 
-	// copy A to dB
-	magma_dcopymatrix(n_rows_local_, n_cols_, device_data_, ldda, dB, lddb, queue);
-
 	//Compute local version of A^T * A
-	magmablas_dgemm(transA,transB,m,n,k,alpha,device_data_,ldda,dB,lddb,beta,dC,lddc,queue);	
+	magmablas_dgemm(transA,transB,m,n,k,alpha,device_data_,ldda,device_data_,lddb,beta,dC,lddc,queue);
+
 	//Transfer local version of A^T * A from gpu to cpu
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, &hC[0], ldc, queue );
 
-        // sum hC over all processors
+        // compute global A^T*A
         MPI_Allreduce(&hC[0], &hCsum[0], n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm_);
-	/*std::cout<<"Printing hCsum:"<<std::endl;
-	magma_dprint(n_cols_, n_cols_, hCsum, n_cols_);*/
+
+	//Transfer global A^T*A from host to device
         magma_dsetmatrix( n_cols_, n_cols_, &hCsum[0], ldc, replicated_S_, lddc, queue );
+
+	//Temporary printing to check that orthogonality is restored
 	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
 	magma_dprint_gpu(lddc, n_cols_, replicated_S_, lddc, queue);
 #endif
@@ -395,29 +393,14 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	double alpha = 1.0;
 	double beta = 0.0;
 	size_t lda = n_rows_local_;
-	size_t ldb = n_rows_local_;
 	size_t ldc = n_cols_;
 
 #ifdef USE_MAGMA
 
 	assert(device_data_initialized_);
 
-        magma_trans_t transA = MagmaTrans;
-	magma_trans_t transB = MagmaNoTrans;
-	double *dA, *dB, *dC, *dZ;
-
 	size_t ldda = magma_roundup(n_rows_local_, 32);
-	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
-	size_t lddz = magma_roundup(n_cols_, 32);
-
-	magma_dmalloc( &dB, lddb*n_cols_ );
-	magma_dmalloc( &dC, lddc*n_cols_ );
-	magma_dmalloc( &dZ, lddc*n_cols_ );
-
-	assert( dB != nullptr );
-	assert( dC != nullptr );
-	assert( dZ != nullptr );
 
 	magma_queue_t queue;
 	int device;
@@ -426,21 +409,19 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 
 	Replicated AtA(replicated_S_, n_cols_, lacomm_);
 	AtA.Schulz(max_iter, tol);
-        
+       
+	//Restore orthogonality on columns of A 
 	double* dAortho;
 	magma_dmalloc( &dAortho, ldda*n_cols_ );
 	magmablas_dgemm(MagmaNoTrans,MagmaNoTrans,ldda,n_cols_,n_cols_,alpha,device_data_,ldda,replicated_S_,lddc,beta,dAortho,ldda,queue);	
 
-	//Copy dAortho to A on gpu
+	//Store re-orthogonalized matrix 
 	magma_dcopymatrix(n_rows_local_, n_cols_, dAortho, ldda, device_data_, ldda, queue);
 	//Copy dAortho to A on cpu
 	//magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0], lda, queue );
 
-	magma_free(dZ);
-
+	//Free gpu memory
 	magma_free(dAortho);
-	magma_free(dB);
-	magma_free(dC);
 
 #endif
 
@@ -466,18 +447,14 @@ void Matrix::orthogonalityCheck()
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
-	double *dA, *dB, *dC;
+	double *dC;
 
 	size_t ldda = magma_roundup(n_rows_local_, 32);
 	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
 
-	magma_dmalloc( &dA, ldda*n_cols_ );
-	magma_dmalloc( &dB, lddb*n_cols_ );
 	magma_dmalloc( &dC, lddc*n_cols_ );
 
-	assert( dA != nullptr );
-	assert( dB != nullptr );
 	assert( dC != nullptr );
 
 	magma_queue_t queue;
@@ -485,11 +462,7 @@ void Matrix::orthogonalityCheck()
 	magma_getdevice( &device );
 	magma_queue_create( device, &queue );
 
-	// copy A to dA
-	magma_dcopymatrix( ldda, n_cols_, this->getDeviceDataRawPtr(), ldda, dA, ldda, queue );
-	magma_dcopymatrix( ldda, n_cols_, this->getDeviceDataRawPtr(), lddb, dB, lddb, queue );
-
-	magmablas_dgemm(transA,transB,m,n,k,alpha,dA,ldda,dB,lddb,beta,dC,lddc,queue);	
+	magmablas_dgemm(transA,transB,m,n,k,alpha,this->getDeviceDataRawPtr(),ldda,this->getDeviceDataRawPtr(),lddb,beta,dC,lddc,queue);	
 	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, &hC[0], ldc, queue );
         
         // sum hC over all processors
@@ -497,6 +470,8 @@ void Matrix::orthogonalityCheck()
         magma_dsetmatrix( n_cols_, n_cols_, &hCsum[0], ldc, dC, lddc, queue );
 	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
 	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
+
+	magma_free(dC);
 
 #endif
 
