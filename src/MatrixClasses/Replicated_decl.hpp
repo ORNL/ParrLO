@@ -37,8 +37,11 @@ class Replicated{
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 
 
-		//Schulz iteration
-		void Schulz(unsigned int max_iter, double tol);
+		//Coupled Schulz iteraion
+		void SchulzCoupled(unsigned int max_iter, double tol);
+
+		//Stabilized single Schulz iteraion
+		void SchulzStabilizedSingle(unsigned int max_iter, double tol);
 
 		//Friend methods
 		//Compute convergence criterion for Schulz iteration
