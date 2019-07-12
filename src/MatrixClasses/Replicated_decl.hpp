@@ -14,14 +14,14 @@ class Replicated{
 	private:
 		size_t dim_;//dimension of replicated Matrix
                 MPI_Comm lacomm_;
-		std::vector<double> data_; //pointer to basic data structure
+		double* device_data_; //pointer to basic data structure
 		bool data_initialized_ = false; 
   
 
         public:
 
 		//Copy constructor
-		Replicated(std::vector<double>&, MPI_Comm);
+		Replicated(double*, size_t, MPI_Comm);
 
 		//Return whether a matrix has initialized data or not
 		bool initialized() const;
@@ -29,11 +29,8 @@ class Replicated{
                 //Routine to retrieve info about the size of a matrix
 		size_t getDim() const;
                
-		//Routine that returns a vector
-		std::vector<double> getCopyData() const; 
-
 		//returns the pointer to a copy of the data
-                const double* getDataRawPtr() const;
+                const double* getDeviceDataRawPtr() const;
 
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 

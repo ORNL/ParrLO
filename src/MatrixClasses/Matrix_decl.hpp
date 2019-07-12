@@ -19,13 +19,13 @@ class Matrix{
 		std::vector<double> host_data_; //vector for data on host
 		double* device_data_; //pointer to basic data structure on gpu
 		//std::unique_ptr<double[]> host_data_; //I want to avoid that the original data gets corrupted
+		double* replicated_S_;
                 size_t n_rows_local_;
                 std::vector<size_t> global_row_id_;   
                 std::vector<size_t> local_row_id_;
 		bool host_data_initialized_ = false; 
 		bool device_data_initialized_ = false;
   
-
         public:
 
                 //Constructor
@@ -81,10 +81,17 @@ class Matrix{
                 //Scaling
                 void scaleMatrix(double);
 
-		//MAGMA ROUTINES
-                void orthogonalize(unsigned int, double);
-		void orthogonalityCheck();
+		//Sum of matrices
                 void matrixSum(Matrix&);
+
+		//Sum all the local aTa through an MPI_Allreduce sum
+		void sumAllProcesses();
+
+		//Routine for orthogonalization
+                void orthogonalize(unsigned int, double);
+
+		//Routine to check orthogonality
+		void orthogonalityCheck();
 
 		//FRIEND methods
 		friend Matrix matrixMatrixMultiply( const Matrix&, const Matrix& );
