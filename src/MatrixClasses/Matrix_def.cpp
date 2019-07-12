@@ -427,12 +427,13 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 
 }
 
-void Matrix::orthogonalityCheck()
+double Matrix::orthogonalityCheck()
 {
 
 	size_t m = n_cols_;
 	size_t n = n_cols_;
 	size_t k = n_rows_local_;
+	double discrepancy = 1.0;
 	double alpha = 1.0;
 	double beta = 0.0;
 	std::vector<double> hC(n_cols_*n_cols_, 0.0);
@@ -447,13 +448,14 @@ void Matrix::orthogonalityCheck()
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
-	double *dC;
+	double *dC, *dI;
 
 	size_t ldda = magma_roundup(n_rows_local_, 32);
 	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
 
 	magma_dmalloc( &dC, lddc*n_cols_ );
+	magma_dmalloc( &dI, lddc*n_cols_ );
 
 	assert( dC != nullptr );
 
@@ -468,12 +470,18 @@ void Matrix::orthogonalityCheck()
         // sum hC over all processors
         MPI_Allreduce(&hC[0], &hCsum[0], n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm_);
         magma_dsetmatrix( n_cols_, n_cols_, &hCsum[0], ldc, dC, lddc, queue );
-	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
-	magma_dprint_gpu(lddc, n_cols_, dC, lddc, queue);
+
+	//Initialize identity matrix
+	magmablas_dlaset(MagmaFull, lddc, n_cols_, 0.0, 1.0, dI, lddc, queue);
+		
+	discrepancy = relativeDiscrepancy(lddc, n_cols_, dC, dI);
 
 	magma_free(dC);
+	magma_free(dI);
 
 #endif
+
+	return discrepancy;
 
 }
 

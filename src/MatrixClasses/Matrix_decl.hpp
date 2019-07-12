@@ -91,9 +91,9 @@ class Matrix{
                 void orthogonalize(unsigned int, double);
 
 		//Routine to check orthogonality
-		void orthogonalityCheck();
+		double orthogonalityCheck();
 
 		//FRIEND methods
-		friend Matrix matrixMatrixMultiply( const Matrix&, const Matrix& );
+		friend double relativeDiscrepancy(size_t, size_t, const double*, const double*);
 };
 #endif

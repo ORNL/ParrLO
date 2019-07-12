@@ -8,6 +8,8 @@
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
+		
+double relativeDiscrepancy(size_t, size_t, const double*, const double*);
 
 class Replicated{	
 
@@ -35,11 +37,13 @@ class Replicated{
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 
 
-		//Compute convergence criterion for Schulz iteration
-		double relativeDiscrepancy(double*, double*) const;
-
 		//Schulz iteration
 		void Schulz(unsigned int max_iter, double tol);
+
+		//Friend methods
+		//Compute convergence criterion for Schulz iteration
+		friend double relativeDiscrepancy(size_t, size_t, const double*, const double*);
+
 		
 };
 #endif

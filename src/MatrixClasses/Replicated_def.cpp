@@ -3,6 +3,49 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
+
+double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B) 
+{
+	double normA = 0.0;
+	double normC = 0.0;
+
+#ifdef USE_MAGMA
+	assert(A!=nullptr);
+	assert(B!=nullptr);
+	
+	size_t lddc = magma_roundup(n, 32);
+	double* C;
+	magma_dmalloc( &C, lddc*m );
+
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+ 
+	unsigned int count_iter = 0;
+	double relative_residual = 1.0;
+
+	magma_norm_t inf_norm = MagmaInfNorm;
+	double *dwork;
+	magma_dmalloc( &dwork, lddc );
+
+	//Compute norm of A
+	normA= magmablas_dlange (inf_norm, n, m, A, lddc, dwork, lddc, queue);
+
+	//Compute C = A-B
+	magma_dcopymatrix(lddc, m, B, lddc, C, lddc, queue);
+	magmablas_dgeadd2(lddc, m, 1.0, A, lddc, -1.0, C, lddc, queue);
+
+	//Compute norm of C = A-B
+	normC= magmablas_dlange (inf_norm, n, m, C, lddc, dwork, lddc, queue);	
+
+	magma_free(C);
+	magma_free(dwork);
+#endif
+
+	return normC/normA;
+
+} 
  
 Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm):lacomm_(comm), dim_(dim){
 
@@ -58,49 +101,6 @@ void Replicated::printMatrix() const
 	}
 
 #endif
-
-} 
-
-double Replicated::relativeDiscrepancy(double* A, double* B) const
-{
-	double normA = 0.0;
-	double normC = 0.0;
-
-#ifdef USE_MAGMA
-	assert(A!=nullptr);
-	assert(B!=nullptr);
-	
-	size_t lddc = magma_roundup(dim_, 32);
-	double* C;
-	magma_dmalloc( &C, lddc*dim_ );
-
-	magma_queue_t queue;
-	int device;
-	magma_getdevice( &device );
-	magma_queue_create( device, &queue );
- 
-	unsigned int count_iter = 0;
-	double relative_residual = 1.0;
-
-	magma_norm_t inf_norm = MagmaInfNorm;
-	double *dwork;
-	magma_dmalloc( &dwork, lddc );
-
-	//Compute norm of A
-	normA= magmablas_dlange (inf_norm, dim_, dim_, A, lddc, dwork, lddc, queue);
-
-	//Compute C = A-B
-	magma_dcopymatrix(lddc, dim_, B, lddc, C, lddc, queue);
-	magmablas_dgeadd2(lddc, dim_, 1.0, A, lddc, -1.0, C, lddc, queue);
-
-	//Compute norm of C = A-B
-	normC= magmablas_dlange (inf_norm, dim_, dim_, C, lddc, dwork, lddc, queue);	
-
-	magma_free(C);
-	magma_free(dwork);
-#endif
-
-	return normC/normA;
 
 } 
 
@@ -171,7 +171,7 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 		magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
 		
 		//Compute discrepancy between consecutive updates of dZ for convergence criterion
-		discrepancy = this->relativeDiscrepancy(dZ, dZaux);
+		discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
 		magma_dcopymatrix(lddc, dim_, dZaux, lddc, dZ, lddc, queue);
 
