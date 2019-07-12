@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 	//A.matrixSum();
 	//
 
-	A.transferDataCPUtoGPU();
+	A.sumAllProcesses();
 	A.orthogonalize(10, 0.1);
 
 	MPI_Barrier(lacomm);
