@@ -20,7 +20,7 @@ int main(int argc, char **argv)
         MPI_Comm_dup(MPI_COMM_WORLD, &lacomm); 
 
 	MPI_Barrier(lacomm);
-        std::cout<<"MPI SUCCESS"<<i<<std::endl<<std::flush;
+        std::cout<<"MPI SUCCESS"<<i<<std::endl;
 
         int comm_rank, comm_size;
         MPI_Comm_rank(lacomm, &comm_rank);
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 	MPI_Barrier(lacomm);
 
 	if(comm_rank==0)
-		std::cout<<"Rescaling of A"<<std::endl<<std::flush;
+		std::cout<<"Rescaling of A"<<std::endl;
 
 	A.scaleMatrix(0.01);
         A.printMatrix();
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 	MPI_Barrier(lacomm);
 
 	if(comm_rank==0)
-		std::cout<<"Initialization of B"<<std::endl<<std::flush;
+		std::cout<<"Initialization of B"<<std::endl;
 
 	B.identityInitialize();
         B.printMatrix();
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	MPI_Barrier(lacomm);
 
 	if(comm_rank==0)
-		std::cout<<"A+B"<<std::endl<<std::flush;
+		std::cout<<"A+B"<<std::endl;
 
         A.matrixSum(B);
 	MPI_Barrier(lacomm);
@@ -80,16 +80,17 @@ int main(int argc, char **argv)
 	MPI_Barrier(lacomm);
 	sleep(3);
 	if(comm_rank==0)
-		std::cout<<"Orthogonalized A"<<std::endl<<std::flush;
+		std::cout<<"Orthogonalized A"<<std::endl;
         A.printMatrix();
 
 	if(comm_rank==0)
-		std::cout<<"Orthogonality check A"<<std::endl<<std::flush;
-	A.orthogonalityCheck(); 
+		std::cout<<"Orthogonality check A"<<std::endl;
 
-	double frobeniusNorm = A.computeFrobeniusNorm();
+	double departure_from_orthogonality = 0.0;
+	departure_from_orthogonality = A.orthogonalityCheck(); 
+
 	if(comm_rank==0)
-		std::cout<<"Frobenius norm of orthogonalized matrix: "<<frobeniusNorm<<std::endl<<std::flush;
+		std::cout<<"Departure from orthogonality: "<<departure_from_orthogonality<<std::endl;
   
        MPI_Comm_free(&lacomm);
        }
