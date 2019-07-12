@@ -408,7 +408,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 	magma_queue_create( device, &queue );
 
 	Replicated AtA(replicated_S_, n_cols_, lacomm_);
-	AtA.Schulz(max_iter, tol);
+	//AtA.SchulzCoupled(max_iter, tol);
+	AtA.SchulzStabilizedSingle(max_iter, tol);
        
 	//Restore orthogonality on columns of A 
 	double* dAortho;
