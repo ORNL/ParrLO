@@ -61,10 +61,54 @@ void Replicated::printMatrix() const
 
 } 
 
+double Replicated::relativeDiscrepancy(double* A, double* B) const
+{
+	double normA = 0.0;
+	double normC = 0.0;
+
+#ifdef USE_MAGMA
+	assert(A!=nullptr);
+	assert(B!=nullptr);
+	
+	size_t lddc = magma_roundup(dim_, 32);
+	double* C;
+	magma_dmalloc( &C, lddc*dim_ );
+
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+ 
+	unsigned int count_iter = 0;
+	double relative_residual = 1.0;
+
+	magma_norm_t inf_norm = MagmaInfNorm;
+	double *dwork;
+	magma_dmalloc( &dwork, lddc );
+
+	//Compute norm of A
+	normA= magmablas_dlange (inf_norm, dim_, dim_, A, lddc, dwork, lddc, queue);
+
+	//Compute C = A-B
+	magma_dcopymatrix(lddc, dim_, B, lddc, C, lddc, queue);
+	magmablas_dgeadd2(lddc, dim_, 1.0, A, lddc, -1.0, C, lddc, queue);
+
+	//Compute norm of C = A-B
+	normC= magmablas_dlange (inf_norm, dim_, dim_, C, lddc, dwork, lddc, queue);	
+
+	magma_free(C);
+	magma_free(dwork);
+#endif
+
+	return normC/normA;
+
+} 
+
 void Replicated::Schulz(unsigned int max_iter, double tol)
 {
 	double alpha = 1.0;
 	double beta = 0.0;
+	double discrepancy = 1.0;
 	size_t ldc = dim_;
 	size_t lddc = magma_roundup(dim_, 32);
 
@@ -103,7 +147,7 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
 	magma_dcopymatrix(lddc, dim_, device_data_, lddc, dY, lddc, queue);
 	magmablas_dlaset(MagmaFull, lddc, dim_, 0.0, 1.0, dZ, lddc, queue);
 
-	while(count_iter<max_iter & relative_residual>tol)
+	while(count_iter<max_iter & discrepancy>tol)
 	{
 		//std::cout<<"Iteration count"<<count_iter<<std::endl;
 		// Compute ZY
@@ -125,6 +169,10 @@ void Replicated::Schulz(unsigned int max_iter, double tol)
                 magmablas_dlascl(MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dYaux, lddc, queue, &val);
                 magmablas_dlascl(MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dZaux, lddc, queue, &val);
 		magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
+		
+		//Compute discrepancy between consecutive updates of dZ for convergence criterion
+		discrepancy = this->relativeDiscrepancy(dZ, dZaux);
+
 		magma_dcopymatrix(lddc, dim_, dZaux, lddc, dZ, lddc, queue);
 
 		count_iter++;

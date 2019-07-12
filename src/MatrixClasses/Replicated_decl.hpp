@@ -35,10 +35,11 @@ class Replicated{
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 
 
+		//Compute convergence criterion for Schulz iteration
+		double relativeDiscrepancy(double*, double*) const;
+
 		//Schulz iteration
 		void Schulz(unsigned int max_iter, double tol);
-
-		double computeFrobeniusNorm();
 		
 };
 #endif
