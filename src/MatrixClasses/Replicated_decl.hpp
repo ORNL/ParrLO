@@ -17,6 +17,11 @@ class Replicated{
 		size_t dim_;//dimension of replicated Matrix
                 MPI_Comm lacomm_;
 		double* device_data_; //pointer to basic data structure
+
+                //flag to specify is object is responsible for releasing memory
+                //associated with device_data_
+                bool own_data_;
+
 		bool data_initialized_ = false; 
  
                 //compute eigenvectors and eigenvalues of matrix 
@@ -30,6 +35,8 @@ class Replicated{
 		Replicated(const Replicated& mat);
 
 		Replicated(double*, size_t, MPI_Comm);
+
+                ~Replicated();
 
                 //set all values to 0.
                 void reset();
