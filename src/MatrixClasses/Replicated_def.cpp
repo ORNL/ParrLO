@@ -46,6 +46,15 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 	return normC/normA;
 
 } 
+
+Replicated::Replicated(const size_t dim, MPI_Comm comm):
+        dim_(dim), lacomm_(comm)
+{
+        data_initialized_ = false;
+        size_t ld = magma_roundup(dim_, 32);
+
+        magma_dmalloc( &device_data_, dim_*ld );
+}
  
 Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm):lacomm_(comm), dim_(dim){
 
@@ -103,6 +112,56 @@ void Replicated::printMatrix() const
 #endif
 
 } 
+
+void Replicated::scale(const double alpha)
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        magma_dscal(dim_*ld, alpha, device_data_, 1, queue);
+
+        magma_queue_destroy(queue);
+}
+
+void Replicated::add(const double alpha, const Replicated& dA)
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        magmablas_dgeadd(dim_, dim_, alpha, dA.device_data_, ld,
+                         device_data_, ld, queue);
+
+        magma_queue_destroy(queue);
+}
+
+double Replicated::maxNorm()const
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        double *dwork;
+        magma_dmalloc( &dwork, dim_ );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        double norm = magmablas_dlange (MagmaMaxNorm, dim_, dim_, device_data_, ld, dwork, dim_, queue);
+
+        magma_queue_destroy(queue);
+
+        magma_free(dwork);
+
+        return norm;
+}
 
 void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 {
@@ -277,4 +336,38 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 
 #endif
 
+}
+
+void Replicated::initializeRandomSymmetric()
+{
+        assert( device_data_!=nullptr );
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(-1, +1);
+
+        //initialize random matrix on CPU
+        std::vector<double> work(dim_*dim_);
+
+	for (size_t j = 0; j < dim_; ++j) {
+        	for (size_t i = 0; i <= j; ++i) {
+                        work[i+j*dim_] = dis(gen);
+                        if(i!=j)
+                            work[j+i*dim_] = work[i+j*dim_];
+                }
+        }
+
+	size_t ld = magma_roundup(dim_, 32);
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+        // copy work to device_data_
+        magma_dsetmatrix( dim_, dim_, work.data(), dim_, device_data_, ld,
+                         queue );
+
+        magma_queue_destroy(queue );
+
+        data_initialized_ = true;
 }

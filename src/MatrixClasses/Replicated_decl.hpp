@@ -22,6 +22,8 @@ class Replicated{
 
         public:
 
+                Replicated(const size_t dim, MPI_Comm);
+
 		//Copy constructor
 		Replicated(double*, size_t, MPI_Comm);
 
@@ -36,6 +38,19 @@ class Replicated{
 
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 
+
+                //compute max norm of matrix
+                double maxNorm()const;
+
+                //Initialize matrix with random values
+                //(for testing purposes)
+                void initializeRandomSymmetric();
+
+                //rescale values in device_data_
+                void scale(const double);
+
+                //add a Replicated matrix with scaling factor
+                void add(const double, const Replicated&);
 
 		//Coupled Schulz iteraion
 		void SchulzCoupled(unsigned int max_iter, double tol);
