@@ -44,6 +44,9 @@ class Replicated{
                 //rescale values in device_data_
                 void scale(const double);
 
+                //add a Replicated matrix with scaling factor
+                void add(const double, const Replicated&);
+
 		//Coupled Schulz iteraion
 		void SchulzCoupled(unsigned int max_iter, double tol);
 

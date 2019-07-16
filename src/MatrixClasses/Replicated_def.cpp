@@ -118,6 +118,21 @@ void Replicated::scale(const double alpha)
         magma_queue_destroy(queue);
 }
 
+void Replicated::add(const double alpha, const Replicated& dA)
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        magmablas_dgeadd(dim_, dim_, alpha, dA.device_data_, ld,
+                         device_data_, ld, queue);
+
+        magma_queue_destroy(queue);
+}
+
 void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 {
 	double alpha = 1.0;
