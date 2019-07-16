@@ -8,3 +8,4 @@ test:
     - cd tests
     - ./testMAGMA
     - ./testMPI
+    - mpirun -np 4 ./testMaxNormReplicated

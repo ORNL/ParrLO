@@ -46,6 +46,15 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 	return normC/normA;
 
 } 
+
+Replicated::Replicated(const size_t dim, MPI_Comm comm):
+        dim_(dim), lacomm_(comm)
+{
+        data_initialized_ = false;
+        size_t ld = magma_roundup(dim_, 32);
+
+        magma_dmalloc( &device_data_, dim_*ld );
+}
  
 Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm):lacomm_(comm), dim_(dim){
 
@@ -131,6 +140,27 @@ void Replicated::add(const double alpha, const Replicated& dA)
                          device_data_, ld, queue);
 
         magma_queue_destroy(queue);
+}
+
+double Replicated::maxNorm()const
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        double *dwork;
+        magma_dmalloc( &dwork, dim_ );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        double norm = magmablas_dlange (MagmaMaxNorm, dim_, dim_, device_data_, ld, dwork, dim_, queue);
+
+        magma_queue_destroy(queue);
+
+        magma_free(dwork);
+
+        return norm;
 }
 
 void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
@@ -310,6 +340,8 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 
 void Replicated::initializeRandomSymmetric()
 {
+        assert( device_data_!=nullptr );
+
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<> dis(-1, +1);
@@ -336,4 +368,6 @@ void Replicated::initializeRandomSymmetric()
                          queue );
 
         magma_queue_destroy(queue );
+
+        data_initialized_ = true;
 }
