@@ -37,6 +37,10 @@ class Replicated{
                 //Visualization methods
 		void printMatrix() const; //It is used to visualize the matrix 
 
+                //Initialize matrix with random values
+                //(for testing purposes)
+                void initializeRandomSymmetric();
+
 		//Coupled Schulz iteraion
 		void SchulzCoupled(unsigned int max_iter, double tol);
 

@@ -278,3 +278,33 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 #endif
 
 }
+
+void Replicated::initializeRandomSymmetric()
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(-1, +1);
+
+        //initialize random matrix on CPU
+        std::vector<double> work(dim_*dim_);
+
+	for (size_t j = 0; j < dim_; ++j) {
+        	for (size_t i = 0; i <= j; ++i) {
+                        work[i+j*dim_] = dis(gen);
+                        if(i!=j)
+                            work[j+i*dim_] = work[i+j*dim_];
+                }
+        }
+
+	size_t ld = magma_roundup(dim_, 32);
+	magma_queue_t queue;
+	int device;
+	magma_getdevice( &device );
+	magma_queue_create( device, &queue );
+
+        // copy work to device_data_
+        magma_dsetmatrix( dim_, dim_, work.data(), dim_, device_data_, ld,
+                         queue );
+
+        magma_queue_destroy(queue );
+}
