@@ -9,3 +9,4 @@ test:
     - ./testMAGMA
     - ./testMPI
     - mpirun -np 4 ./testMaxNormReplicated
+    - mpirun -np 4 ./testSchulz
