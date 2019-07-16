@@ -41,6 +41,9 @@ class Replicated{
                 //(for testing purposes)
                 void initializeRandomSymmetric();
 
+                //rescale values in device_data_
+                void scale(const double);
+
 		//Coupled Schulz iteraion
 		void SchulzCoupled(unsigned int max_iter, double tol);
 
