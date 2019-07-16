@@ -54,6 +54,7 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm):
         size_t ld = magma_roundup(dim_, 32);
 
         magma_dmalloc( &device_data_, dim_*ld );
+        own_data_ = true;
 }
  
 Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm) :
@@ -61,7 +62,7 @@ Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm) :
 {
 	device_data_ = aTa;
 	data_initialized_ = true;
-  
+        own_data_ = false;
 } 
 
 Replicated::Replicated(const Replicated& mat):
@@ -70,6 +71,7 @@ Replicated::Replicated(const Replicated& mat):
         size_t ld = magma_roundup(dim_, 32);
 
         magma_dmalloc( &device_data_, dim_*ld );
+        own_data_ = true;
 
         magma_queue_t queue;
         int device;
@@ -81,6 +83,11 @@ Replicated::Replicated(const Replicated& mat):
         magma_queue_destroy(queue);
 
         data_initialized_ = true;
+}
+
+Replicated::~Replicated()
+{
+        if( own_data_ ) magma_free( device_data_ );
 }
 
 bool Replicated::initialized() const
