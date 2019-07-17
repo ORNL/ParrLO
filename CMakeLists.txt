@@ -41,6 +41,11 @@ endif()
 
 find_package(MPI REQUIRED)
 
+set(Boost_COMPONENTS
+  program_options
+  )
+find_package(Boost 1.65 REQUIRED COMPONENTS ${Boost_COMPONENTS})
+
 enable_testing()
 
 add_subdirectory(src)
