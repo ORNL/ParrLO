@@ -5,8 +5,4 @@ test:
     - cd build
     - cmake -DBUILD_FOR_GPU=ON -DCMAKE_PREFIX_PATH=/opt/magma ..
     - make
-    - cd tests
-    - ./testMAGMA
-    - ./testMPI
-    - mpirun -np 4 ./testMaxNormReplicated
-    - mpirun -np 4 ./testSchulz
+    - ctest
