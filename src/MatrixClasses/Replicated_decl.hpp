@@ -17,15 +17,33 @@ class Replicated{
 		size_t dim_;//dimension of replicated Matrix
                 MPI_Comm lacomm_;
 		double* device_data_; //pointer to basic data structure
+
+                //flag to specify is object is responsible for releasing memory
+                //associated with device_data_
+                bool own_data_;
+
 		bool data_initialized_ = false; 
-  
+ 
+                //compute eigenvectors and eigenvalues of matrix 
+                void diagonalize(double *evecs, std::vector<double>& evals);
+
+        //sum up contributions from all MPI tasks
+        void consolidate();
 
         public:
 
                 Replicated(const size_t dim, MPI_Comm);
 
 		//Copy constructor
+		Replicated(const Replicated& mat);
+
+        //Build matrix with local (partial) contributions to matrix elements
 		Replicated(double*, size_t, MPI_Comm);
+
+                ~Replicated();
+
+                //set all values to 0.
+                void reset();
 
 		//Return whether a matrix has initialized data or not
 		bool initialized() const;
@@ -52,11 +70,15 @@ class Replicated{
                 //add a Replicated matrix with scaling factor
                 void add(const double, const Replicated&);
 
+                //set diagonal matrix with uniform value alpha
+                void setDiagonal(const double alpha);
+
 		//Coupled Schulz iteraion
 		void SchulzCoupled(unsigned int max_iter, double tol);
 
 		//Stabilized single Schulz iteraion
 		void SchulzStabilizedSingle(unsigned int max_iter, double tol);
+                void InvSqrt();
 
 		//Friend methods
 		//Compute convergence criterion for Schulz iteration

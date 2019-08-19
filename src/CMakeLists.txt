@@ -9,6 +9,7 @@ add_executable(${MAIN_TUTORIAL} ${SOURCES_TUTORIAL})
 foreach(X ${MAIN_MATRIX} ${MAIN_TUTORIAL})
   target_link_libraries(${X} PRIVATE ${BLAS_LIBRARIES})
   target_link_libraries(${X} PRIVATE ${MPI_CXX_LIBRARIES})
+  target_link_libraries(${X} PRIVATE Boost::program_options Boost::boost)
   target_include_directories(${X} PRIVATE ${MPI_CXX_INCLUDE_DIRS})
 endforeach()
 

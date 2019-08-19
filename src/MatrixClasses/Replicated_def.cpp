@@ -54,14 +54,43 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm):
         size_t ld = magma_roundup(dim_, 32);
 
         magma_dmalloc( &device_data_, dim_*ld );
+        own_data_ = true;
 }
  
-Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm):lacomm_(comm), dim_(dim){
-
-	device_data_ = aTa;
+Replicated::Replicated(double* partial, size_t dim, MPI_Comm comm) :
+        lacomm_(comm), dim_(dim), device_data_(partial)
+{
 	data_initialized_ = true;
-  
+        own_data_ = false;
+
+    // data is sum of partial contributions
+    consolidate();
 } 
+
+Replicated::Replicated(const Replicated& mat):
+        dim_(mat.dim_), lacomm_(mat.lacomm_)
+{
+        size_t ld = magma_roundup(dim_, 32);
+
+        magma_dmalloc( &device_data_, dim_*ld );
+        own_data_ = true;
+
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        magma_dcopymatrix(ld, dim_, mat.device_data_, ld, device_data_, ld, queue);
+
+        magma_queue_destroy(queue);
+
+        data_initialized_ = true;
+}
+
+Replicated::~Replicated()
+{
+        if( own_data_ ) magma_free( device_data_ );
+}
 
 bool Replicated::initialized() const
 {
@@ -253,7 +282,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 
 }
 
-
 void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 {
 	double alpha = 1.0;
@@ -344,7 +372,7 @@ void Replicated::initializeRandomSymmetric()
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_real_distribution<> dis(-1, +1);
+	std::uniform_real_distribution<> dis(-1, 1);
 
         //initialize random matrix on CPU
         std::vector<double> work(dim_*dim_);
@@ -370,4 +398,139 @@ void Replicated::initializeRandomSymmetric()
         magma_queue_destroy(queue );
 
         data_initialized_ = true;
+}
+
+void Replicated::reset()
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        //set diagonal and offdiagonal values to 0.
+        magmablas_dlaset(MagmaFull, dim_, dim_, 0., 0., device_data_, ld, 
+                         queue);
+
+        magma_queue_destroy(queue);
+
+        data_initialized_ = true;
+}
+
+void Replicated::setDiagonal(const double alpha)
+{
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        //set offdiag values to 0, diag to alpha
+        magmablas_dlaset(MagmaFull, dim_, dim_, 0., alpha, device_data_, ld,
+                         queue);
+
+        magma_queue_destroy(queue);
+
+        data_initialized_ = true;
+}
+
+void Replicated::diagonalize(double *evecs, std::vector<double>& evals)
+{
+        int info;
+
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        size_t ld = magma_roundup(dim_, 32);
+
+        int lwork = 2 * dim_ + dim_ * magma_get_ssytrd_nb(dim_);
+        int liwork = 3 + 5 * dim_;
+
+        std::vector<double> wa(dim_*dim_);
+        std::vector<double> work(lwork);
+        std::vector<int> iwork(liwork);
+
+        //copy matrix into evecs
+        magmablas_dlacpy(MagmaFull, dim_, dim_, device_data_, ld, evecs, ld,
+                     queue);
+
+        magma_dsyevd_gpu(MagmaVec, MagmaUpper, dim_, evecs, ld, evals.data(),
+                     wa.data(), dim_, work.data(), lwork,
+                     iwork.data(), liwork, &info);
+
+        magma_queue_destroy(queue);
+}
+
+void Replicated::InvSqrt()
+{
+        double *evecs;
+        size_t ld = magma_roundup(dim_, 32);
+
+        magma_int_t ret = magma_dmalloc(&evecs, dim_*ld);
+        assert(ret == MAGMA_SUCCESS);
+
+        double *work;
+        ret = magma_dmalloc(&work, dim_*ld);
+        assert(ret == MAGMA_SUCCESS);
+
+        std::vector<double> evals(dim_);
+
+        diagonalize(evecs, evals);
+
+        std::transform(evals.begin(), evals.end(), evals.begin(),
+                   [](double alpha){ return 1./sqrt(alpha); });
+
+        //set matrix values to 0.
+        reset();
+
+        magma_queue_t queue;
+        int device;
+        magma_getdevice( &device );
+        magma_queue_create( device, &queue );
+
+        //set diagonal values to evals
+        magma_dsetvector(dim_, evals.data(), 1, device_data_, ld+1, queue);
+
+        //multiply diagonal matrix right and left by matrix
+        //of eigenvectors
+        magmablas_dgemm(MagmaNoTrans, MagmaTrans, ld, dim_, dim_,
+                        1., device_data_, ld,
+                        evecs, ld, 0., work, ld, queue);
+        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, ld, dim_, dim_,
+                        1., evecs, ld,
+                        work, ld, 0., device_data_, ld, queue);
+
+        magma_free(evecs);
+        magma_free(work);
+
+        magma_queue_destroy(queue);
+}
+
+void Replicated::consolidate()
+{
+    std::vector<double> hC( dim_*dim_, 0.0 );
+    std::vector<double> hCsum( dim_*dim_, 0.0 );
+
+    size_t ld = magma_roundup(dim_, 32);
+
+    magma_queue_t queue;
+    int device;
+    magma_getdevice( &device );
+    magma_queue_create( device, &queue );
+
+    // copy from GPU to CPU
+    magma_dgetmatrix(dim_, dim_, device_data_, ld, &hC[0], dim_, queue );
+
+    // replicated matrix data is sum of all partial matrices
+    MPI_Allreduce(&hC[0], &hCsum[0], dim_*dim_, MPI_DOUBLE, MPI_SUM,
+                  lacomm_);
+
+    magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue );
+
+    std::cout<<"Printing matrix after MPI_Allreduce SUM:"<<std::endl;
+    magma_dprint_gpu(ld, dim_, device_data_, ld, queue);
 }
