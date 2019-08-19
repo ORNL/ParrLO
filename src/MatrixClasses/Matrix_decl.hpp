@@ -25,6 +25,9 @@ class Matrix{
                 std::vector<size_t> local_row_id_;
 		bool host_data_initialized_ = false; 
 		bool device_data_initialized_ = false;
+
+        //Compute local contributions to aTa
+        void computeAtA();
   
         public:
 
@@ -83,9 +86,6 @@ class Matrix{
 
 		//Sum of matrices
                 void matrixSum(Matrix&);
-
-		//Sum all the local aTa through an MPI_Allreduce sum
-		void sumAllProcesses();
 
 		//Routine for orthogonalization
                 void orthogonalize(unsigned int, double);

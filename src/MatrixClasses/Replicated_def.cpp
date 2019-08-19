@@ -57,12 +57,14 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm):
         own_data_ = true;
 }
  
-Replicated::Replicated(double* aTa, size_t dim, MPI_Comm comm) :
-        lacomm_(comm), dim_(dim)
+Replicated::Replicated(double* partial, size_t dim, MPI_Comm comm) :
+        lacomm_(comm), dim_(dim), device_data_(partial)
 {
-	device_data_ = aTa;
 	data_initialized_ = true;
         own_data_ = false;
+
+    // data is sum of partial contributions
+    consolidate();
 } 
 
 Replicated::Replicated(const Replicated& mat):
@@ -506,4 +508,29 @@ void Replicated::InvSqrt()
         magma_free(work);
 
         magma_queue_destroy(queue);
+}
+
+void Replicated::consolidate()
+{
+    std::vector<double> hC( dim_*dim_, 0.0 );
+    std::vector<double> hCsum( dim_*dim_, 0.0 );
+
+    size_t ld = magma_roundup(dim_, 32);
+
+    magma_queue_t queue;
+    int device;
+    magma_getdevice( &device );
+    magma_queue_create( device, &queue );
+
+    // copy from GPU to CPU
+    magma_dgetmatrix(dim_, dim_, device_data_, ld, &hC[0], dim_, queue );
+
+    // replicated matrix data is sum of all partial matrices
+    MPI_Allreduce(&hC[0], &hCsum[0], dim_*dim_, MPI_DOUBLE, MPI_SUM,
+                  lacomm_);
+
+    magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue );
+
+    std::cout<<"Printing matrix after MPI_Allreduce SUM:"<<std::endl;
+    magma_dprint_gpu(ld, dim_, device_data_, ld, queue);
 }

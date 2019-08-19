@@ -151,7 +151,6 @@ int main(int argc, char **argv)
 	//A.matrixSum();
 	//
 
-	A.sumAllProcesses();
 	A.orthogonalize(10, 0.1);
 
 	MPI_Barrier(lacomm);
