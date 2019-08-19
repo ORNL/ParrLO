@@ -27,6 +27,9 @@ class Replicated{
                 //compute eigenvectors and eigenvalues of matrix 
                 void diagonalize(double *evecs, std::vector<double>& evals);
 
+        //sum up contributions from all MPI tasks
+        void consolidate();
+
         public:
 
                 Replicated(const size_t dim, MPI_Comm);
@@ -34,6 +37,7 @@ class Replicated{
 		//Copy constructor
 		Replicated(const Replicated& mat);
 
+        //Build matrix with local (partial) contributions to matrix elements
 		Replicated(double*, size_t, MPI_Comm);
 
                 ~Replicated();

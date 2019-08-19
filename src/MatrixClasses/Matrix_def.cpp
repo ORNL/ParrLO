@@ -328,7 +328,7 @@ void Matrix::scaleMatrix(double scale_factor)
 }
 
 
-void Matrix::sumAllProcesses()
+void Matrix::computeAtA()
 {
 
 	size_t m = n_cols_;
@@ -336,56 +336,35 @@ void Matrix::sumAllProcesses()
 	size_t k = n_rows_local_;
 	double alpha = 1.0;
 	double beta = 0.0;
-	size_t lda = n_rows_local_;
-	size_t ldb = n_rows_local_;
-	size_t ldc = n_cols_;
 
-	std::vector<double> hC( n_cols_*n_cols_,0.0 );
-	std::vector<double> hCsum( n_cols_*n_cols_,0.0 );
-	assert( &hC[0] != nullptr );
-	assert( &hCsum[0] != nullptr );
 #ifdef USE_MAGMA
 
 	assert(device_data_initialized_);
 
         magma_trans_t transA = MagmaTrans;
 	magma_trans_t transB = MagmaNoTrans;
-	double *dC;
 
 	size_t ldda = magma_roundup(n_rows_local_, 32);
 	size_t lddb = magma_roundup(n_rows_local_, 32);
 	size_t lddc = magma_roundup(n_cols_, 32);
 
-	magma_dmalloc( &dC, lddc*n_cols_ );
 	magma_dmalloc( &replicated_S_, lddc*n_cols_ );
-
-	assert( dC != nullptr );
 
 	magma_queue_t queue;
 	int device;
 	magma_getdevice( &device );
 	magma_queue_create( device, &queue );
 
-	//Compute local version of A^T * A
-	magmablas_dgemm(transA,transB,m,n,k,alpha,device_data_,ldda,device_data_,lddb,beta,dC,lddc,queue);
-
-	//Transfer local version of A^T * A from gpu to cpu
-	magma_dgetmatrix( n_cols_, n_cols_, dC, lddc, &hC[0], ldc, queue );
-
-        // compute global A^T*A
-        MPI_Allreduce(&hC[0], &hCsum[0], n_cols_*n_cols_ , MPI_DOUBLE, MPI_SUM, lacomm_);
-
-	//Transfer global A^T*A from host to device
-        magma_dsetmatrix( n_cols_, n_cols_, &hCsum[0], ldc, replicated_S_, lddc, queue );
-
-	//Temporary printing to check that orthogonality is restored
-	std::cout<<"Printing dC after MPI_Allreduce SUM:"<<std::endl;
-	magma_dprint_gpu(lddc, n_cols_, replicated_S_, lddc, queue);
+	//Compute local contribution to A^T * A
+	magmablas_dgemm(transA,transB,m,n,k,alpha,device_data_,ldda,
+        device_data_,lddb,beta,replicated_S_,lddc,queue);
 #endif
 }
 
 void Matrix::orthogonalize(unsigned int max_iter, double tol)
 {
+    //compute local contributions to Gram matrix
+    computeAtA();
 
 	size_t m = n_cols_;
 	size_t n = n_cols_;
