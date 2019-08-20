@@ -1,89 +1,88 @@
 #ifndef REPLICATED_DECL_HPP
 #define REPLICATED_DECL_HPP
 
-#include <memory> //needed for unique pointers
-#include <vector>
 #include <algorithm>
+#include <memory> //needed for unique pointers
 #include <mpi.h>
+#include <vector>
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
-		
+
 double relativeDiscrepancy(size_t, size_t, const double*, const double*);
 
-class Replicated{	
+class Replicated
+{
 
-	private:
-		size_t dim_;//dimension of replicated Matrix
-                MPI_Comm lacomm_;
-		double* device_data_; //pointer to basic data structure
+private:
+    size_t dim_; // dimension of replicated Matrix
+    MPI_Comm lacomm_;
+    double* device_data_; // pointer to basic data structure
 
-                //flag to specify is object is responsible for releasing memory
-                //associated with device_data_
-                bool own_data_;
+    // flag to specify is object is responsible for releasing memory
+    // associated with device_data_
+    bool own_data_;
 
-		bool data_initialized_ = false; 
- 
-                //compute eigenvectors and eigenvalues of matrix 
-                void diagonalize(double *evecs, std::vector<double>& evals);
+    bool data_initialized_ = false;
 
-        //sum up contributions from all MPI tasks
-        void consolidate();
+    // compute eigenvectors and eigenvalues of matrix
+    void diagonalize(double* evecs, std::vector<double>& evals);
 
-        public:
+    // sum up contributions from all MPI tasks
+    void consolidate();
 
-                Replicated(const size_t dim, MPI_Comm);
+public:
+    Replicated(const size_t dim, MPI_Comm);
 
-		//Copy constructor
-		Replicated(const Replicated& mat);
+    // Copy constructor
+    Replicated(const Replicated& mat);
 
-        //Build matrix with local (partial) contributions to matrix elements
-		Replicated(double*, size_t, MPI_Comm);
+    // Build matrix with local (partial) contributions to matrix elements
+    Replicated(double*, size_t, MPI_Comm);
 
-                ~Replicated();
+    ~Replicated();
 
-                //set all values to 0.
-                void reset();
+    // set all values to 0.
+    void reset();
 
-		//Return whether a matrix has initialized data or not
-		bool initialized() const;
+    // Return whether a matrix has initialized data or not
+    bool initialized() const;
 
-                //Routine to retrieve info about the size of a matrix
-		size_t getDim() const;
-               
-		//returns the pointer to a copy of the data
-                const double* getDeviceDataRawPtr() const;
+    // Routine to retrieve info about the size of a matrix
+    size_t getDim() const;
 
-                //Visualization methods
-		void printMatrix() const; //It is used to visualize the matrix 
+    // returns the pointer to a copy of the data
+    const double* getDeviceDataRawPtr() const;
 
-                //compute max norm of matrix
-                double maxNorm()const;
+    // Visualization methods
+    void printMatrix() const; // It is used to visualize the matrix
 
-                //Initialize matrix with random values
-                //(for testing purposes)
-                void initializeRandomSymmetric();
+    // compute max norm of matrix
+    double maxNorm() const;
 
-                //rescale values in device_data_
-                void scale(const double);
+    // Initialize matrix with random values
+    //(for testing purposes)
+    void initializeRandomSymmetric();
 
-                //add a Replicated matrix with scaling factor
-                void add(const double, const Replicated&);
+    // rescale values in device_data_
+    void scale(const double);
 
-                //set diagonal matrix with uniform value alpha
-                void setDiagonal(const double alpha);
+    // add a Replicated matrix with scaling factor
+    void add(const double, const Replicated&);
 
-		//Coupled Schulz iteraion
-		void SchulzCoupled(unsigned int max_iter, double tol);
+    // set diagonal matrix with uniform value alpha
+    void setDiagonal(const double alpha);
 
-		//Stabilized single Schulz iteraion
-		void SchulzStabilizedSingle(unsigned int max_iter, double tol);
-                void InvSqrt();
+    // Coupled Schulz iteraion
+    void SchulzCoupled(unsigned int max_iter, double tol);
 
-		//Friend methods
-		//Compute convergence criterion for Schulz iteration
-		friend double relativeDiscrepancy(size_t, size_t, const double*, const double*);
+    // Stabilized single Schulz iteraion
+    void SchulzStabilizedSingle(unsigned int max_iter, double tol);
+    void InvSqrt();
 
-		
+    // Friend methods
+    // Compute convergence criterion for Schulz iteration
+    friend double relativeDiscrepancy(
+        size_t, size_t, const double*, const double*);
 };
 #endif
