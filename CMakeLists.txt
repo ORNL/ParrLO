@@ -46,6 +46,20 @@ set(Boost_COMPONENTS
   )
 find_package(Boost 1.65 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
+# clang-format (optional)
+set(PLA_WITH_CLANG_FORMAT FALSE CACHE BOOL "Indent code with clang-format")
+if(${PLA_WITH_CLANG_FORMAT})
+  find_package(CLANG_FORMAT)
+  if(${CLANG_FORMAT_FOUND})
+    message(STATUS "Indent with clang-format")
+    file(GLOB_RECURSE FORMAT_SOURCES src/*.cc src/*.h src/*.cpp src/*.hpp
+      tests/*.cc tests/*.h tests/*.cpp tests/*.hpp)
+    add_custom_target(format
+      COMMAND ${CLANG_FORMAT_EXECUTABLE} -i -style=file ${FORMAT_SOURCES}
+      DEPENDS ${FORMAT_SOURCES})
+  endif()
+endif()
+
 enable_testing()
 
 add_subdirectory(src)
