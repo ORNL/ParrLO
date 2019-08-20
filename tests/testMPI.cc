@@ -1,7 +1,7 @@
 #include <iostream>
 #include <mpi.h>
 
-int main(int argc,char **argv)
+int main(int argc, char** argv)
 {
     int mpirc = MPI_Init(&argc, &argv);
     if (mpirc != MPI_SUCCESS)
@@ -12,7 +12,7 @@ int main(int argc,char **argv)
 
     int mype = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mype);
-    std::cout<<"Hello from task "<<mype<<std::endl;
+    std::cout << "Hello from task " << mype << std::endl;
 
     mpirc = MPI_Finalize();
     if (mpirc != MPI_SUCCESS)
@@ -21,6 +21,6 @@ int main(int argc,char **argv)
         return 1;
     }
 
-    //return 0 for SUCCESS
+    // return 0 for SUCCESS
     return 0;
 }

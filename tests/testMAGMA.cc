@@ -2,16 +2,16 @@
 #include "magma_v2.h"
 #endif
 
-#include <iostream>
-#include <vector>
-#include <stdlib.h>
 #include <cmath>
+#include <iostream>
+#include <stdlib.h>
+#include <vector>
 
 int main(int argc, char** argv)
 {
     // dimension of matrix
-    const int n = 10;
-    const int n2 = n*n;
+    const int n  = 10;
+    const int n2 = n * n;
 
     double alpha = 2.;
 
@@ -23,59 +23,61 @@ int main(int argc, char** argv)
     }
 
 #ifdef USE_MAGMA
-   
-    magma_int_t magmalog;   
+
+    magma_int_t magmalog;
 
     magmalog = magma_init();
     if (magmalog == MAGMA_SUCCESS)
     {
-     std::cout<<"MAGMA INIT SUCCESS"<<std::endl;
-    }else{
-     if (magmalog == MAGMA_ERR_UNKNOWN) 
-        std::cout<<"MAGMA INIT FAILS UNKNOWN ERROR"<<std::endl;
-     if (magmalog == MAGMA_ERR_HOST_ALLOC)
-        std::cout<<"MAGMA INIT FAILS HOST ALLOC"<<std::endl;
-      return 1;
-    } 
-    
+        std::cout << "MAGMA INIT SUCCESS" << std::endl;
+    }
+    else
+    {
+        if (magmalog == MAGMA_ERR_UNKNOWN)
+            std::cout << "MAGMA INIT FAILS UNKNOWN ERROR" << std::endl;
+        if (magmalog == MAGMA_ERR_HOST_ALLOC)
+            std::cout << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
+        return 1;
+    }
+
     // alocate data on GPU
     double* dv1;
-    
-    magma_int_t ld =magma_roundup(n, 32);
+
+    magma_int_t ld = magma_roundup(n, 32);
     magma_device_t device;
     magma_queue_t queue;
     magma_int_t cuda_arch;
 
-    cuda_arch = magma_getdevice_arch(); 
-    std::cout<<"Cuda Device Architecture"<<cuda_arch<<std::endl; 
-  
+    cuda_arch = magma_getdevice_arch();
+    std::cout << "Cuda Device Architecture" << cuda_arch << std::endl;
+
     magma_getdevice(&device);
-    
-    magma_queue_create(device,&queue);
-    //MAGMA error check  
-    magma_dmalloc(&dv1,ld*n);
-    //assert(ret == MAGMA_SUCCESS);
+
+    magma_queue_create(device, &queue);
+    // MAGMA error check
+    magma_dmalloc(&dv1, ld * n);
+    // assert(ret == MAGMA_SUCCESS);
     // set data on GPU
-    magma_dsetmatrix(n,n,&v1[0],n,dv1,ld,queue);
+    magma_dsetmatrix(n, n, &v1[0], n, dv1, ld, queue);
 
     // rescale data on GPU
-    magma_dscal(n*ld,alpha,dv1,1,queue);
+    magma_dscal(n * ld, alpha, dv1, 1, queue);
 
     // get result copy on CPU
-    magma_dgetmatrix(n,n,dv1,ld,&v1[0],n,queue);
+    magma_dgetmatrix(n, n, dv1, ld, &v1[0], n, queue);
 
-    magma_dprint(n,n,&v1[0],n);    
+    magma_dprint(n, n, &v1[0], n);
 
     const double tol = 1.e-12;
     for (auto ii : v1)
-    { 
-        if(std::abs(v1[ii]-3.)>tol)
+    {
+        if (std::abs(v1[ii] - 3.) > tol)
         {
-            std::cout<<"TEST FAILED"<<std::endl;
+            std::cout << "TEST FAILED" << std::endl;
             return 1;
         }
     }
- 
+
     magma_queue_destroy(queue);
 
     magma_free(dv1);
@@ -84,19 +86,20 @@ int main(int argc, char** argv)
 
     if (magmalog == MAGMA_SUCCESS)
     {
-     std::cout<<"MAGMA FINALIZE SUCCESS"<<std::endl;
-    }else{
-     if (magmalog == MAGMA_ERR_UNKNOWN)
-        std::cout<<"MAGMA FINALIZE FAILS UNKNOWN ERROR"<<std::endl;
-     if (magmalog == MAGMA_ERR_HOST_ALLOC)
-        std::cout<<"MAGMA FINALIZE FAILS HOST ALLOC"<<std::endl;
-       return 1; 
+        std::cout << "MAGMA FINALIZE SUCCESS" << std::endl;
+    }
+    else
+    {
+        if (magmalog == MAGMA_ERR_UNKNOWN)
+            std::cout << "MAGMA FINALIZE FAILS UNKNOWN ERROR" << std::endl;
+        if (magmalog == MAGMA_ERR_HOST_ALLOC)
+            std::cout << "MAGMA FINALIZE FAILS HOST ALLOC" << std::endl;
+        return 1;
     }
 
-    std::cout<<"TEST SUCCESSFUL"<<std::endl;
+    std::cout << "TEST SUCCESSFUL" << std::endl;
 
 #endif
 
     return 0;
 }
-
