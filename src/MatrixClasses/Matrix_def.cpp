@@ -54,9 +54,41 @@ Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
 
 Matrix::~Matrix()
 {
+
+    int ret;
+    //  std::cout<<"calling destructor C++"<<std::endl;
 #ifdef USE_MAGMA
-    magma_free(device_data_);
-    magma_free(replicated_S_);
+
+    if (device_data_ != NULL)
+    {
+        // std::cout<<"calling destructor device_data"<<std::endl;
+        ret = magma_free(device_data_);
+        //  if(ret==MAGMA_SUCCESS){
+        //   std::cout<<"magma free device_data success"<<std::endl;
+        //   }
+        //    else
+        //   {
+        if (ret == MAGMA_ERR_INVALID_PTR)
+        {
+            std::cout << "magma free device_data invalid ptr" << std::endl;
+        }
+    }
+    //  }
+    if (replicated_S_ != NULL)
+    {
+        //  std::cout<<"calling destructor replicated_S"<<std::endl;
+        ret = magma_free(replicated_S_);
+        // if(ret==MAGMA_SUCCESS){
+        //  std::cout<<"magma free replicated_S success"<<std::endl;
+        //  }
+        //  else
+        //  {
+        if (ret == MAGMA_ERR_INVALID_PTR)
+        {
+            std::cout << "magma free replicated_S invalid ptr" << std::endl;
+        }
+    }
+//  }
 #endif
 }
 
