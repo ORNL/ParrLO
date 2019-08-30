@@ -59,7 +59,7 @@ Matrix::~Matrix()
     //  std::cout<<"calling destructor C++"<<std::endl;
 #ifdef USE_MAGMA
 
-    if (device_data_ != NULL)
+    if (device_data_ != nullptr)
     {
         // std::cout<<"calling destructor device_data"<<std::endl;
         ret = magma_free(device_data_);
@@ -74,7 +74,7 @@ Matrix::~Matrix()
         }
     }
     //  }
-    if (replicated_S_ != NULL)
+    if (replicated_S_ != nullptr)
     {
         //  std::cout<<"calling destructor replicated_S"<<std::endl;
         ret = magma_free(replicated_S_);
