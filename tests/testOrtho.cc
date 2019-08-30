@@ -41,38 +41,23 @@ int main(int argc, char** argv)
 
         Matrix A(nrows, ncols, lacomm);
         Matrix B(nrows, ncols, lacomm);
-        MPI_Barrier(lacomm);
 
         A.randomInitialize();
         A.scaleMatrix(0.01);
         A.printMatrix();
 
-        sleep(3);
-        MPI_Barrier(lacomm);
-
         B.identityInitialize();
         B.printMatrix();
-        sleep(3);
-        MPI_Barrier(lacomm);
 
         A.matrixSum(B);
-        MPI_Barrier(lacomm);
-        sleep(3);
         A.printMatrix();
-        sleep(3);
-        MPI_Barrier(lacomm);
 
         A.orthogonalize(10, 0.1);
-
-        MPI_Barrier(lacomm);
-        sleep(3);
 
         double dfo        = 0.0;
         const double toll = 5.e-2;
 
         dfo = A.orthogonalityCheck();
-
-        MPI_Barrier(lacomm);
 
         if (dfo < toll)
         {
