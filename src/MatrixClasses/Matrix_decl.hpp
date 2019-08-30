@@ -18,10 +18,10 @@ private:
     size_t n_cols_; // number of columns
     MPI_Comm lacomm_;
     std::vector<double> host_data_; // vector for data on host
-    double* device_data_; // pointer to basic data structure on gpu
+    double* device_data_ = nullptr; // pointer to basic data structure on gpu
     // std::unique_ptr<double[]> host_data_; //I want to avoid that the original
     // data gets corrupted
-    double* replicated_S_;
+    double* replicated_S_ = nullptr;
     size_t n_rows_local_;
     std::vector<size_t> global_row_id_;
     std::vector<size_t> local_row_id_;

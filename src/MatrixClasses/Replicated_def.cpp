@@ -88,7 +88,25 @@ Replicated::Replicated(const Replicated& mat)
 
 Replicated::~Replicated()
 {
-    if (own_data_) magma_free(device_data_);
+    int ret;
+    //    std::cout<<"calling Replicated destructor"<<own_data_<<std::endl;
+    if (own_data_)
+    {
+
+        //  std::cout<<"free device_data from replicated destructor"<<std::endl;
+        ret = magma_free(device_data_);
+        //  if(ret==MAGMA_SUCCESS){
+        //    std::cout<<"magma free device_data success rep destr"<<std::endl;
+        //  }
+        //  else
+        //  {
+        if (ret == MAGMA_ERR_INVALID_PTR)
+        {
+            std::cout << "magma free device_data invalid ptr rep destr"
+                      << std::endl;
+        }
+    }
+    //  }
 }
 
 bool Replicated::initialized() const { return data_initialized_; }
