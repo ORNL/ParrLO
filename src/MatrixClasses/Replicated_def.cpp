@@ -41,6 +41,7 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 
     magma_free(C);
     magma_free(dwork);
+    magma_queue_destroy(queue);
 #endif
 
     return normC / normA;
@@ -153,6 +154,7 @@ void Replicated::printMatrix() const
         std::cout << "\n" << std::endl;
     }
 
+    magma_queue_destroy(queue);
 #endif
 }
 
@@ -299,8 +301,8 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_free(dZaux);
     magma_free(dZY);
     magma_free(dIntermediate);
-
     magma_free(dwork);
+    magma_queue_destroy(queue);
 
 #endif
 }
@@ -390,8 +392,8 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_free(dZaux);
     magma_free(dZY);
     magma_free(dIntermediate);
-
     magma_free(dwork);
+    magma_queue_destroy(queue);
 
 #endif
 }
@@ -556,4 +558,6 @@ void Replicated::consolidate()
 
     std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
     magma_dprint_gpu(ld, dim_, device_data_, ld, queue);
+
+    magma_queue_destroy(queue);
 }
