@@ -110,6 +110,7 @@ void Matrix::transferDataCPUtoGPU()
     magma_dsetmatrix(n_rows_local_, n_cols_, this->getHostDataRawPtr(), lda,
         device_data_, ldda, queue);
     if (!device_data_initialized_) device_data_initialized_ = true;
+    magma_queue_destroy(queue);
 #endif
 }
 
@@ -131,6 +132,7 @@ void Matrix::transferDataGPUtoCPU()
     magma_dgetmatrix(
         n_rows_local_, n_cols_, device_data_, ldda, &host_data_[0], lda, queue);
     if (!host_data_initialized_) host_data_initialized_ = true;
+
 #endif
 }
 
@@ -321,6 +323,8 @@ void Matrix::printMatrix() const
     // magma_dprint(n_rows_local_, n_cols_, this->getHostDataRawPtr(),
     // n_rows_local_);
     magma_dprint_gpu(ldda, n_cols_, this->getDeviceDataRawPtr(), ldda, queue);
+
+    magma_queue_destroy(queue);
 #else
     assert(host_data_initialized_);
     if (comm_rank == 0)
@@ -371,6 +375,7 @@ void Matrix::scaleMatrix(double scale_factor)
     size_t ldda = magma_roundup(n_rows_local_, 32);
     magma_dscal(ldda * n_cols_, scale_factor, device_data_, 1, queue);
     this->transferDataGPUtoCPU();
+    magma_queue_destroy(queue);
 #else
     std::transform(host_data_.begin(), host_data_.end(), host_data_.begin(),
         [scale_factor](double alpha) { return scale_factor * alpha; });
@@ -407,6 +412,8 @@ void Matrix::computeAtA()
     // Compute local contribution to A^T * A
     magmablas_dgemm(transA, transB, m, n, k, alpha, device_data_, ldda,
         device_data_, lddb, beta, replicated_S_, lddc, queue);
+    magma_queue_destroy(queue);
+
 #endif
 }
 
@@ -454,6 +461,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
 
     // Free gpu memory
     magma_free(dAortho);
+
+    magma_queue_destroy(queue);
 
 #endif
 }
@@ -512,6 +521,7 @@ double Matrix::orthogonalityCheck()
     magma_free(dC);
     magma_free(dI);
 
+    magma_queue_destroy(queue);
 #endif
 
     return discrepancy;
@@ -546,6 +556,7 @@ void Matrix::matrixSum(Matrix& B)
         this->getDeviceDataRawPtrNonConst(), ldda, queue);
     this->transferDataGPUtoCPU();
 
+    magma_queue_destroy(queue);
 // if MAGMA not used reimplement access operator
 #else
     for (size_t j = 0; j < n_cols_; ++j)
