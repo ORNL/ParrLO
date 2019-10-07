@@ -262,32 +262,32 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
             lddc, dY, lddc, beta, dZY, lddc, queue);
         // magma_dprint_gpu(lddc, dim_, dZY, lddc, queue);
 
-        // Compute 3I-ZY
+        // Compute 1.5*I-0.5*ZY
         magma_dcopymatrix(lddc, dim_, dZY, lddc, dIntermediate, lddc, queue);
         magmablas_dgeadd2(
-            lddc, dim_, 3.0, dI, lddc, -1.0, dIntermediate, lddc, queue);
+            lddc, dim_, 1.5, dI, lddc, -0.5, dIntermediate, lddc, queue);
 
-        // Compute Y(3I-ZY)
+        // Compute Y(1.5*I-0.5*ZY)
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, lddc, dim_, dim_, alpha, dY,
             lddc, dIntermediate, lddc, beta, dYaux, lddc, queue);
 
-        // Compute (3I-ZY)Z
+        // Compute (1.5*I-0.5*ZY)Z
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, lddc, dim_, dim_, alpha,
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
         // Rescale by 1/2
-        int val = 0;
-        magmablas_dlascl(
-            MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dYaux, lddc, queue, &val);
-        magmablas_dlascl(
-            MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dZaux, lddc, queue, &val);
-        magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
-
+        // int val = 0;
+        // magmablas_dlascl(
+        //     MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dYaux, lddc, queue, &val);
+        //  magmablas_dlascl(
+        //     MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dZaux, lddc, queue, &val);
+        // magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
+        dY = dYaux;
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
-
-        magma_dcopymatrix(lddc, dim_, dZaux, lddc, dZ, lddc, queue);
+        dZ          = dZaux;
+        // magma_dcopymatrix(lddc, dim_, dZaux, lddc, dZ, lddc, queue);
 
         count_iter++;
     }
