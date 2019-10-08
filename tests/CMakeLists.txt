@@ -3,7 +3,12 @@ set(SOURCES_TESTMAGMA ${CMAKE_SOURCE_DIR}/tests/testMAGMA.cc)
 set(SOURCES_TESTMAXNORM ${CMAKE_SOURCE_DIR}/tests/testMaxNormReplicated.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
 set(SOURCES_TESTSCHULZ ${CMAKE_SOURCE_DIR}/tests/testSchulz.cc
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
+set(SOURCES_TESTORTHO ${CMAKE_SOURCE_DIR}/tests/testOrtho.cc
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 
 set(MAIN_TESTMPI testMPI)
 add_executable(${MAIN_TESTMPI} ${SOURCES_TESTMPI})
@@ -13,8 +18,10 @@ set(MAIN_TESTMAXNORM testMaxNormReplicated)
 add_executable(${MAIN_TESTMAXNORM} ${SOURCES_TESTMAXNORM})
 set(MAIN_TESTSCHULZ testSchulz)
 add_executable(${MAIN_TESTSCHULZ} ${SOURCES_TESTSCHULZ})
+set(MAIN_TESTORTHO testOrtho)
+add_executable(${MAIN_TESTORTHO} ${SOURCES_TESTORTHO})
 
-foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ})
+foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTORTHO})
   target_link_libraries(${X} PRIVATE ${BLAS_LIBRARIES})
   target_link_libraries(${X} PRIVATE ${MPI_CXX_LIBRARIES})
   target_include_directories(${X} PRIVATE ${MPI_CXX_INCLUDE_DIRS})
@@ -22,7 +29,7 @@ foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHUL
 endforeach()
 
 if (${BUILD_FOR_GPU})
-  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ})
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTORTHO})
     target_link_libraries(${X} PRIVATE PkgConfig::MAGMA)
     set_target_properties(${X} PROPERTIES
       CUDA_SEPARABLE_COMPILATION ON
@@ -34,7 +41,7 @@ if (${BUILD_FOR_GPU})
       CXX_STANDARD_REQUIRED ON)
   endforeach()
 else()
-  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ})
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ}${MAIN_TESTORTHO})
     set_target_properties(${X} PROPERTIES
       CXX_STANDARD_REQUIRED ON
       CXX_STANDARD 11
@@ -55,3 +62,6 @@ add_test(NAME testMaxNormReplicated
 add_test(NAME testSchulz
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1
          ${CMAKE_CURRENT_BINARY_DIR}/testSchulz)
+add_test(NAME testOrtho
+         COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1
+         ${CMAKE_CURRENT_BINARY_DIR}/testOrtho)

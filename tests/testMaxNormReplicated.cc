@@ -18,12 +18,14 @@ int main(int argc, char** argv)
     magma_int_t magmalog = magma_init();
     if (magmalog == MAGMA_SUCCESS)
     {
-        std::cout<<"MAGMA INIT SUCCESS"<<std::endl;
-    }else{
+        std::cout << "MAGMA INIT SUCCESS" << std::endl;
+    }
+    else
+    {
         if (magmalog == MAGMA_ERR_UNKNOWN)
-            std::cout<<"MAGMA INIT FAILS UNKNOWN ERROR"<<std::endl;
+            std::cout << "MAGMA INIT FAILS UNKNOWN ERROR" << std::endl;
         if (magmalog == MAGMA_ERR_HOST_ALLOC)
-            std::cout<<"MAGMA INIT FAILS HOST ALLOC"<<std::endl;
+            std::cout << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
         return 1;
     }
 
@@ -32,29 +34,29 @@ int main(int argc, char** argv)
 
     Replicated A(n, MPI_COMM_WORLD);
 
-    //initialize with random values in interval [-1,1]
+    // initialize with random values in interval [-1,1]
     A.initializeRandomSymmetric();
 
     A.printMatrix();
 
     double norm = A.maxNorm();
 
-    std::cout<<"Max Norm of A = "<<norm<<std::endl;
+    std::cout << "Max Norm of A = " << norm << std::endl;
 
-    //check if norm consistent with random values in [-1,1]
-    if(norm > 1.)
+    // check if norm consistent with random values in [-1,1]
+    if (norm > 1.)
     {
-        std::cerr<<"Max Norm larger than 1!!!\n"<<std::endl;
+        std::cerr << "Max Norm larger than 1!!!\n" << std::endl;
         return 1;
     }
 
-    if(norm < 0.5)
+    if (norm < 0.5)
     {
-        std::cerr<<"Max Norm smaller than 0.5!!!"<<std::endl;
+        std::cerr << "Max Norm smaller than 0.5!!!" << std::endl;
         return 1;
     }
 
-    std::cout<<"TEST SUCCESSFUL"<<std::endl;
+    std::cout << "TEST SUCCESSFUL" << std::endl;
 
     mpirc = MPI_Finalize();
     if (mpirc != MPI_SUCCESS)
