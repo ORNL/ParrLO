@@ -1,4 +1,5 @@
 #include "MatrixClasses/Replicated_decl.hpp"
+#include "MatrixClasses/Timer.hpp"
 
 #ifdef USE_MAGMA
 #include "magma_v2.h"
@@ -32,6 +33,10 @@ int main(int argc, char** argv)
             std::cout << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
         return 1;
     }
+
+    std::string name = "test_Schultz";
+    Timer tstime(name);
+    tstime.start();
 
     // dimension of matrix
     const int n = 10;
@@ -96,6 +101,9 @@ int main(int argc, char** argv)
     }
 
     std::cout << "TEST SUCCESSFUL" << std::endl;
+
+    tstime.stop();
+    tstime.print(std::cout);
 
     mpirc = MPI_Finalize();
     if (mpirc != MPI_SUCCESS)

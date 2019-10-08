@@ -3,10 +3,12 @@ set(SOURCES_TESTMAGMA ${CMAKE_SOURCE_DIR}/tests/testMAGMA.cc)
 set(SOURCES_TESTMAXNORM ${CMAKE_SOURCE_DIR}/tests/testMaxNormReplicated.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
 set(SOURCES_TESTSCHULZ ${CMAKE_SOURCE_DIR}/tests/testSchulz.cc
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 set(SOURCES_TESTORTHO ${CMAKE_SOURCE_DIR}/tests/testOrtho.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 
 set(MAIN_TESTMPI testMPI)
 add_executable(${MAIN_TESTMPI} ${SOURCES_TESTMPI})
