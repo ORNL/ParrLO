@@ -1,16 +1,17 @@
 #include "MatrixClasses/Replicated_decl.hpp"
+#include "MatrixClasses/Timer.hpp"
 
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
 
 #include <iostream>
-#include <vector>
 #include <mpi.h>
+#include <vector>
 
 int main(int argc, char** argv)
 {
-    std::cout<<"Test Schulz iterative solver"<<std::endl;
+    std::cout << "Test Schulz iterative solver" << std::endl;
 
     int mpirc = MPI_Init(&argc, &argv);
     if (mpirc != MPI_SUCCESS)
@@ -22,37 +23,43 @@ int main(int argc, char** argv)
     magma_int_t magmalog = magma_init();
     if (magmalog == MAGMA_SUCCESS)
     {
-        std::cout<<"MAGMA INIT SUCCESS"<<std::endl;
-    }else{
+        std::cout << "MAGMA INIT SUCCESS" << std::endl;
+    }
+    else
+    {
         if (magmalog == MAGMA_ERR_UNKNOWN)
-            std::cout<<"MAGMA INIT FAILS UNKNOWN ERROR"<<std::endl;
+            std::cout << "MAGMA INIT FAILS UNKNOWN ERROR" << std::endl;
         if (magmalog == MAGMA_ERR_HOST_ALLOC)
-            std::cout<<"MAGMA INIT FAILS HOST ALLOC"<<std::endl;
+            std::cout << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
         return 1;
     }
+
+    std::string name = "test_Schultz";
+    Timer tstime(name);
+    tstime.start();
 
     // dimension of matrix
     const int n = 10;
 
     Replicated A(n, MPI_COMM_WORLD);
 
-    //initialize with random values in interval [-0.1,0.1]
+    // initialize with random values in interval [-0.1,0.1]
     A.initializeRandomSymmetric();
     A.scale(0.1);
 
     Replicated B(n, MPI_COMM_WORLD);
-    B.setDiagonal(1.);    
+    B.setDiagonal(1.);
     B.add(0.1, A);
     B.printMatrix();
 
-    //C is a copy of B
+    // C is a copy of B
     Replicated C(B);
 
     C.InvSqrt();
     const double normC = C.maxNorm();
-    if(std::isnan(normC))
+    if (std::isnan(normC))
     {
-        std::cout<<"Max Norm of C is NaN!!!"<<std::endl;
+        std::cout << "Max Norm of C is NaN!!!" << std::endl;
         return 1;
     }
 
@@ -61,20 +68,20 @@ int main(int argc, char** argv)
     B.add(-1., C);
 
     const double normdiff = B.maxNorm();
-    std::cout<<"Norm Difference: "<<normdiff<<std::endl;
-    if(std::isnan(normdiff))
+    std::cout << "Norm Difference: " << normdiff << std::endl;
+    if (std::isnan(normdiff))
     {
-        std::cout<<"Difference is NaN!!!"<<std::endl;
+        std::cout << "Difference is NaN!!!" << std::endl;
         return 1;
     }
 
     const double tol = 1.e-6;
-    std::cout<<"Difference:\n";
+    std::cout << "Difference:\n";
     B.printMatrix();
 
-    if( normdiff>tol )
+    if (normdiff > tol)
     {
-        std::cout<<"Difference larger than tol!!!"<<std::endl;
+        std::cout << "Difference larger than tol!!!" << std::endl;
         return 1;
     }
 
@@ -82,16 +89,21 @@ int main(int argc, char** argv)
 
     if (magmalog == MAGMA_SUCCESS)
     {
-     std::cout<<"MAGMA FINALIZE SUCCESS"<<std::endl;
-    }else{
-     if (magmalog == MAGMA_ERR_UNKNOWN)
-        std::cout<<"MAGMA FINALIZE FAILS UNKNOWN ERROR"<<std::endl;
-     if (magmalog == MAGMA_ERR_HOST_ALLOC)
-        std::cout<<"MAGMA FINALIZE FAILS HOST ALLOC"<<std::endl;
-       return 1; 
+        std::cout << "MAGMA FINALIZE SUCCESS" << std::endl;
+    }
+    else
+    {
+        if (magmalog == MAGMA_ERR_UNKNOWN)
+            std::cout << "MAGMA FINALIZE FAILS UNKNOWN ERROR" << std::endl;
+        if (magmalog == MAGMA_ERR_HOST_ALLOC)
+            std::cout << "MAGMA FINALIZE FAILS HOST ALLOC" << std::endl;
+        return 1;
     }
 
-    std::cout<<"TEST SUCCESSFUL"<<std::endl;
+    std::cout << "TEST SUCCESSFUL" << std::endl;
+
+    tstime.stop();
+    tstime.print(std::cout);
 
     mpirc = MPI_Finalize();
     if (mpirc != MPI_SUCCESS)
@@ -102,4 +114,3 @@ int main(int argc, char** argv)
 
     return 0;
 }
-

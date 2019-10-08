@@ -1,4 +1,4 @@
-set(SOURCES_MATRIX ${CMAKE_SOURCE_DIR}/src/matrix_example.cc ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
+set(SOURCES_MATRIX ${CMAKE_SOURCE_DIR}/src/matrix_example.cc ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 set(SOURCES_TUTORIAL ${CMAKE_SOURCE_DIR}/src/tutorial4_copy.cc)
 
 set(MAIN_MATRIX matrix_example)
