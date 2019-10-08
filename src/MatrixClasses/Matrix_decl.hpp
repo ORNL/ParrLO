@@ -2,6 +2,7 @@
 #define MATRIX_DECL_HPP
 
 #include "Replicated_decl.hpp"
+#include "Timer.hpp"
 #include <algorithm>
 #include <memory> //needed for unique pointers
 #include <mpi.h>
@@ -27,7 +28,6 @@ private:
     std::vector<size_t> local_row_id_;
     bool host_data_initialized_   = false;
     bool device_data_initialized_ = false;
-
     // Compute local contributions to aTa
     void computeAtA();
 

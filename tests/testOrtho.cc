@@ -1,4 +1,5 @@
 #include "MatrixClasses/Matrix_decl.hpp"
+#include "MatrixClasses/Timer.hpp"
 #include <fstream>
 #include <iostream>
 #include <mpi.h>
@@ -30,6 +31,10 @@ int main(int argc, char** argv)
         int comm_rank, comm_size;
         MPI_Comm_rank(lacomm, &comm_rank);
         MPI_Comm_size(lacomm, &comm_size);
+
+        std::string name = "test_ortho";
+        Timer totime(name);
+        totime.start();
 
 #ifdef USE_MAGMA
         magma_init();
@@ -71,6 +76,8 @@ int main(int argc, char** argv)
 #else
 
 #endif
+            totime.stop();
+            totime.print(std::cout);
 
             MPI_Finalize();
 
@@ -88,6 +95,8 @@ int main(int argc, char** argv)
 #else
 
 #endif
+            totime.stop();
+            totime.print(std::cout);
 
             MPI_Finalize();
 

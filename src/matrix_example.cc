@@ -1,4 +1,5 @@
 #include "MatrixClasses/Matrix_decl.hpp"
+#include "MatrixClasses/Timer.hpp"
 #include <fstream>
 #include <iostream>
 #include <mpi.h>
@@ -104,11 +105,17 @@ int main(int argc, char** argv)
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, lacomm);
 
+        std::string name = "matrix_example";
+        Timer matrix_time(name);
+        matrix_time.start();
+
 #ifdef USE_MAGMA
         magma_init();
 #else
 
 #endif
+        // matrix_time.start();
+
         int nrows = idata[0];
         int ncols = idata[1];
         if (comm_rank == 0)
@@ -171,12 +178,17 @@ int main(int argc, char** argv)
                       << departure_from_orthogonality << std::endl;
 
         MPI_Comm_free(&lacomm);
+
+        matrix_time.stop();
+
+        matrix_time.print(std::cout);
     }
 #ifdef USE_MAGMA
     magma_finalize();
 #else
 
 #endif
+
     MPI_Finalize();
 
     return 0;
