@@ -13,6 +13,13 @@ foreach(X ${MAIN_MATRIX} ${MAIN_TUTORIAL})
   target_include_directories(${X} PRIVATE ${MPI_CXX_INCLUDE_DIRS})
 endforeach()
 
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  foreach(X ${MAIN_MATRIX} ${MAIN_TUTORIAL})
+    target_link_libraries(${X} PUBLIC OpenMP::OpenMP_CXX)
+  endforeach()
+endif()
+
 if (${BUILD_FOR_GPU})
   foreach(X ${MAIN_MATRIX} ${MAIN_TUTORIAL})
     target_link_libraries(${X} PRIVATE PkgConfig::MAGMA)
