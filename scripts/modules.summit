@@ -1,0 +1,9 @@
+module purge
+
+module load gcc
+module load spectrum-mpi
+module load openblas 
+module load cmake
+module load cuda
+module load boost
+module load magma

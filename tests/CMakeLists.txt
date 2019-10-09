@@ -49,6 +49,13 @@ else()
   endforeach()
 endif()
 
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTORTHO})
+    target_link_libraries(${X} PUBLIC OpenMP::OpenMP_CXX)
+  endforeach()
+endif()
+
 add_test(NAME testMPI
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4
          ${CMAKE_CURRENT_BINARY_DIR}/testMPI)

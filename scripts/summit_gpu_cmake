@@ -1,0 +1,4 @@
+#!/bin/bash
+# magma 2.4.0 on condo does not export the flags correctly so we add them using
+# CMAKE_EXE_LINKER_FLAGS
+cmake -DBUILD_FOR_GPU=ON ..
