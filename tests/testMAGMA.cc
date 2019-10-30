@@ -24,9 +24,7 @@ int main(int argc, char** argv)
 
 #ifdef USE_MAGMA
 
-    magma_int_t magmalog;
-
-    magmalog = magma_init();
+    magma_int_t magmalog = magma_init();
     if (magmalog == MAGMA_SUCCESS)
     {
         std::cout << "MAGMA INIT SUCCESS" << std::endl;
@@ -34,29 +32,31 @@ int main(int argc, char** argv)
     else
     {
         if (magmalog == MAGMA_ERR_UNKNOWN)
-            std::cout << "MAGMA INIT FAILS UNKNOWN ERROR" << std::endl;
+            std::cerr << "MAGMA INIT FAILS UNKNOWN ERROR" << std::endl;
         if (magmalog == MAGMA_ERR_HOST_ALLOC)
-            std::cout << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
+            std::cerr << "MAGMA INIT FAILS HOST ALLOC" << std::endl;
         return 1;
     }
 
     // alocate data on GPU
-    double* dv1;
-
     magma_int_t ld = magma_roundup(n, 32);
     magma_device_t device;
     magma_queue_t queue;
-    magma_int_t cuda_arch;
 
-    cuda_arch = magma_getdevice_arch();
+    magma_int_t cuda_arch = magma_getdevice_arch();
     std::cout << "Cuda Device Architecture" << cuda_arch << std::endl;
 
     magma_getdevice(&device);
 
     magma_queue_create(device, &queue);
-    // MAGMA error check
-    magma_dmalloc(&dv1, ld * n);
-    // assert(ret == MAGMA_SUCCESS);
+
+    double* dv1;
+    magma_int_t ret = magma_dmalloc(&dv1, ld * n);
+    if (ret != MAGMA_SUCCESS)
+    {
+        std::cerr << "magma_dmalloc FAILED!!!" << std::endl;
+        return 1;
+    }
     // set data on GPU
     magma_dsetmatrix(n, n, &v1[0], n, dv1, ld, queue);
 
@@ -80,7 +80,12 @@ int main(int argc, char** argv)
 
     magma_queue_destroy(queue);
 
-    magma_free(dv1);
+    magma_int_t ret_free = magma_free(dv1);
+    if (ret_free != MAGMA_SUCCESS)
+    {
+        std::cerr << "magma_free FAILED!!!" << std::endl;
+        return 1;
+    }
 
     magmalog = magma_finalize();
 
@@ -91,9 +96,9 @@ int main(int argc, char** argv)
     else
     {
         if (magmalog == MAGMA_ERR_UNKNOWN)
-            std::cout << "MAGMA FINALIZE FAILS UNKNOWN ERROR" << std::endl;
+            std::cerr << "MAGMA FINALIZE FAILS UNKNOWN ERROR" << std::endl;
         if (magmalog == MAGMA_ERR_HOST_ALLOC)
-            std::cout << "MAGMA FINALIZE FAILS HOST ALLOC" << std::endl;
+            std::cerr << "MAGMA FINALIZE FAILS HOST ALLOC" << std::endl;
         return 1;
     }
 
