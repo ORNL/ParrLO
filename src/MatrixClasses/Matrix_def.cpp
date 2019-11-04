@@ -322,7 +322,8 @@ void Matrix::printMatrix() const
               << std::flush;
     // magma_dprint(n_rows_local_, n_cols_, this->getHostDataRawPtr(),
     // n_rows_local_);
-    magma_dprint_gpu(ldda, n_cols_, this->getDeviceDataRawPtr(), ldda, queue);
+    magma_dprint_gpu(
+        n_rows_local_, n_cols_, this->getDeviceDataRawPtr(), ldda, queue);
 
     magma_queue_destroy(queue);
 #else
@@ -449,8 +450,9 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
     // Restore orthogonality on columns of A
     double* dAortho;
     magma_dmalloc(&dAortho, ldda * n_cols_);
-    magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, ldda, n_cols_, n_cols_, alpha,
-        device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda, queue);
+    magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, n_rows_local_, n_cols_, n_cols_,
+        alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
+        queue);
 
     // Store re-orthogonalized matrix
     magma_dcopymatrix(
@@ -514,9 +516,9 @@ double Matrix::orthogonalityCheck()
     magma_dsetmatrix(n_cols_, n_cols_, &hCsum[0], ldc, dC, lddc, queue);
 
     // Initialize identity matrix
-    magmablas_dlaset(MagmaFull, lddc, n_cols_, 0.0, 1.0, dI, lddc, queue);
+    magmablas_dlaset(MagmaFull, n_cols_, n_cols_, 0.0, 1.0, dI, lddc, queue);
 
-    discrepancy = relativeDiscrepancy(lddc, n_cols_, dC, dI);
+    discrepancy = relativeDiscrepancy(n_cols_, n_cols_, dC, dI);
 
     magma_free(dC);
     magma_free(dI);
@@ -532,9 +534,6 @@ void Matrix::matrixSum(Matrix& B)
 
     assert(n_rows_ == B.getNumRows());
     assert(n_cols_ == B.getNumCols());
-
-    size_t lda = n_rows_local_;
-    size_t ldb = n_rows_local_;
 
     // double* hA = this->getCopyRawPtrData();
     // std::cout<<"Printing hA: "<<std::endl;
@@ -552,7 +551,7 @@ void Matrix::matrixSum(Matrix& B)
 
     assert(this->initialized());
     assert(B.initialized());
-    magmablas_dgeadd(ldda, n_cols_, 1.0, B.getDeviceDataRawPtr(), lddb,
+    magmablas_dgeadd(n_rows_local_, n_cols_, 1.0, B.getDeviceDataRawPtr(), lddb,
         this->getDeviceDataRawPtrNonConst(), ldda, queue);
     this->transferDataGPUtoCPU();
 
