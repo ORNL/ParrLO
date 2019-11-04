@@ -57,17 +57,26 @@ int main(int argc, char** argv)
         A.matrixSum(B);
         A.printMatrix();
 
-        A.orthogonalize(10, 0.1);
+        double dfo_before = 0.0;
+        double dfo_after  = 0.0;
+        const double toll = 1.e-8;
 
-        double dfo        = 0.0;
-        const double toll = 5.e-2;
+        // Perform the check on the departure from orthogonality before
+        // re-orthogonalizing
+        dfo_before = A.orthogonalityCheck();
 
-        dfo = A.orthogonalityCheck();
+        A.orthogonalize(10, 1.e-4);
 
-        if (dfo < toll)
+        dfo_after = A.orthogonalityCheck();
+
+        if (dfo_after < toll and dfo_after < dfo_before)
         {
             if (comm_rank == 0)
-                std::cout << "Orthogonalized A with dfo" << dfo << std::endl;
+                std::cout
+                    << "Orthogonalized A with dfo before orthogonalizing: "
+                    << dfo_before
+                    << " and dfo after orthogonalizing: " << dfo_after
+                    << std::endl;
             A.printMatrix();
             MPI_Comm_free(&lacomm);
 
@@ -86,7 +95,10 @@ int main(int argc, char** argv)
         else
         {
             if (comm_rank == 0)
-                std::cout << "Orthogonality test failed A with dof" << dfo
+                std::cout << "Orthogonality test failed A with dfo before"
+                             "orthogonalizing: "
+                          << dfo_before
+                          << " and dfo after orthogonalizing: " << dfo_after
                           << std::endl;
             MPI_Comm_free(&lacomm);
 
