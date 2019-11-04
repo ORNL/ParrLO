@@ -239,7 +239,7 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dY, *dYaux;
+    double *dY, *dYaux, *dYtemp;
     double *dZ, *dZaux;
     double* dZY;
     double* dIntermediate;
@@ -282,7 +282,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         //  magmablas_dlascl(
         //     MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dZaux, lddc, queue, &val);
         // magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
-        dY = dYaux;
+        dYtemp = dY;
+        dY     = dYaux;
+        dYaux  = dYtemp;
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
