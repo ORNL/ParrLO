@@ -12,7 +12,7 @@ Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     MPI_Comm_rank(lacomm_, &comm_rank);
     MPI_Comm_size(lacomm_, &comm_size);
     n_rows_local_ = floor(n_rows_ / comm_size);
-    if (comm_rank + 1 <= n_rows_ % comm_size) n_rows_local_++;
+    if (comm_rank + 1 <= int(n_rows_ % comm_size)) n_rows_local_++;
     global_row_id_.resize(n_rows_local_);
     local_row_id_.resize(n_rows_local_);
 
@@ -22,7 +22,7 @@ Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     for (size_t index = 0; index < n_rows_local_; ++index)
     {
         local_row_id_[index] = index;
-        if (comm_rank + 1 <= n_rows_ % comm_size)
+        if (comm_rank + 1 <= int(n_rows_ % comm_size))
             global_row_id_[index] = (comm_rank)*n_rows_local_ + index;
         else
         {
@@ -46,7 +46,6 @@ Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     // host_data_.reset( new double[n_rows_ * n_cols_] );
 
     // Allocate memory on gpu
-    size_t lda  = n_rows_local_;
     size_t ldda = magma_roundup(n_rows_local_, 32);
     magma_dmalloc(&device_data_, ldda * n_cols_);
     assert(device_data_ != nullptr);
@@ -363,6 +362,8 @@ double Matrix::computeFrobeniusNorm()
         [&frobSum](double x) { frobSum += x * x; });
     MPI_Allreduce(&frobSum, &frobSumAll, 1, MPI_DOUBLE, MPI_SUM, lacomm_);
     frobNorm = std::sqrt(frobSumAll);
+
+    return frobNorm;
 }
 
 void Matrix::scaleMatrix(double scale_factor)
@@ -423,13 +424,8 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
     // compute local contributions to Gram matrix
     computeAtA();
 
-    size_t m     = n_cols_;
-    size_t n     = n_cols_;
-    size_t k     = n_rows_local_;
     double alpha = 1.0;
     double beta  = 0.0;
-    size_t lda   = n_rows_local_;
-    size_t ldc   = n_cols_;
 
 #ifdef USE_MAGMA
 
@@ -482,8 +478,6 @@ double Matrix::orthogonalityCheck()
     std::vector<double> hCsum(n_cols_ * n_cols_, 0.0);
     assert(&hC[0] != nullptr);
     assert(&hCsum[0] != nullptr);
-    size_t lda = n_rows_local_;
-    size_t ldb = n_rows_local_;
     size_t ldc = n_cols_;
 
 #ifdef USE_MAGMA

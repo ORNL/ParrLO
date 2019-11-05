@@ -15,8 +15,8 @@ class Replicated
 {
 
 private:
-    size_t dim_; // dimension of replicated Matrix
-    MPI_Comm lacomm_;
+    size_t dim_      = 0; // dimension of replicated Matrix
+    MPI_Comm lacomm_ = NULL;
     double* device_data_; // pointer to basic data structure
 
     // flag to specify is object is responsible for releasing memory

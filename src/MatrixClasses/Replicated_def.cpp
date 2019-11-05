@@ -22,9 +22,6 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    unsigned int count_iter  = 0;
-    double relative_residual = 1.0;
-
     magma_norm_t inf_norm = MagmaInfNorm;
     double* dwork;
     magma_dmalloc(&dwork, lddc);
@@ -91,24 +88,16 @@ Replicated::Replicated(const Replicated& mat)
 Replicated::~Replicated()
 {
     int ret;
-    //    std::cout<<"calling Replicated destructor"<<own_data_<<std::endl;
+
     if (own_data_)
     {
-
-        //  std::cout<<"free device_data from replicated destructor"<<std::endl;
         ret = magma_free(device_data_);
-        //  if(ret==MAGMA_SUCCESS){
-        //    std::cout<<"magma free device_data success rep destr"<<std::endl;
-        //  }
-        //  else
-        //  {
         if (ret == MAGMA_ERR_INVALID_PTR)
         {
             std::cout << "magma free device_data invalid ptr rep destr"
                       << std::endl;
         }
     }
-    //  }
 }
 
 bool Replicated::initialized() const { return data_initialized_; }
@@ -215,7 +204,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     double alpha       = 1.0;
     double beta        = 0.0;
     double discrepancy = 1.0;
-    size_t ldc         = dim_;
     size_t lddc        = magma_roundup(dim_, 32);
 
 #ifdef USE_MAGMA
@@ -224,23 +212,16 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    unsigned int count_iter  = 0;
-    double relative_residual = 1.0;
+    unsigned int count_iter = 0;
 
-    magma_norm_t one_norm = MagmaOneNorm;
-    magma_norm_t inf_norm = MagmaInfNorm;
     double* dwork;
     magma_dmalloc(&dwork, lddc);
-    double one_norm_value = magmablas_dlange(
-        one_norm, dim_, dim_, device_data_, lddc, dwork, lddc, queue);
-    double inf_norm_value = magmablas_dlange(
-        inf_norm, dim_, dim_, device_data_, lddc, dwork, lddc, queue);
 
     // Implementation of Schulz iteration
 
     double* dI;
     double *dY, *dYaux, *dYtemp;
-    double *dZ, *dZaux;
+    double *dZ, *dZaux, *dZtemp;
     double* dZY;
     double* dIntermediate;
     magma_dmalloc(&dI, lddc * dim_);
@@ -255,9 +236,8 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_dcopymatrix(dim_, dim_, device_data_, lddc, dY, lddc, queue);
     magmablas_dlaset(MagmaFull, lddc, dim_, 0.0, 1.0, dZ, lddc, queue);
 
-    while (count_iter<max_iter & discrepancy> tol)
+    while ((count_iter < max_iter) & (discrepancy > tol))
     {
-        // std::cout<<"Iteration count"<<count_iter<<std::endl;
         // Compute ZY
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha, dZ,
             lddc, dY, lddc, beta, dZY, lddc, queue);
@@ -275,21 +255,17 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
-        // Rescale by 1/2
-        // int val = 0;
-        // magmablas_dlascl(
-        //     MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dYaux, lddc, queue, &val);
-        //  magmablas_dlascl(
-        //     MagmaFull, 0, 0, 2.0, 1.0, lddc, dim_, dZaux, lddc, queue, &val);
-        // magma_dcopymatrix(lddc, dim_, dYaux, lddc, dY, lddc, queue);
         dYtemp = dY;
         dY     = dYaux;
         dYaux  = dYtemp;
+
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
-        dZ          = dZaux;
-        // magma_dcopymatrix(lddc, dim_, dZaux, lddc, dZ, lddc, queue);
+
+        dZtemp = dZ;
+        dZ     = dZaux;
+        dZaux  = dZtemp;
 
         count_iter++;
     }
@@ -314,7 +290,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     double alpha       = 1.0;
     double beta        = 0.0;
     double discrepancy = 1.0;
-    size_t ldc         = dim_;
     size_t lddc        = magma_roundup(dim_, 32);
 
 #ifdef USE_MAGMA
@@ -323,17 +298,10 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    unsigned int count_iter  = 0;
-    double relative_residual = 1.0;
+    unsigned int count_iter = 0;
 
-    magma_norm_t one_norm = MagmaOneNorm;
-    magma_norm_t inf_norm = MagmaInfNorm;
     double* dwork;
     magma_dmalloc(&dwork, lddc);
-    double one_norm_value = magmablas_dlange(
-        one_norm, dim_, dim_, device_data_, lddc, dwork, lddc, queue);
-    double inf_norm_value = magmablas_dlange(
-        inf_norm, dim_, dim_, device_data_, lddc, dwork, lddc, queue);
 
     // Implementation of Schulz iteration
 
@@ -351,13 +319,12 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dI, lddc, queue);
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dZ, lddc, queue);
 
-    while (count_iter<max_iter & discrepancy> tol)
+    while ((count_iter < max_iter) & (discrepancy > tol))
     {
         // Compute Y = A*Z
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
             device_data_, lddc, dZ, lddc, beta, dY, lddc, queue);
 
-        // std::cout<<"Iteration count"<<count_iter<<std::endl;
         // Compute Z^T*Y for stabilization
         magmablas_dgemm(MagmaTrans, MagmaNoTrans, dim_, dim_, dim_, alpha, dZ,
             lddc, dY, lddc, beta, dZY, lddc, queue);
