@@ -38,7 +38,6 @@ int main(int argc, char** argv)
 
         MPI_Comm_dup(MPI_COMM_WORLD, &lacomm);
 
-        MPI_Barrier(lacomm);
         std::cout << "MPI SUCCESS" << i << std::endl;
 
         int comm_rank, comm_size;
@@ -125,46 +124,28 @@ int main(int argc, char** argv)
 
         Matrix A(nrows, ncols, lacomm);
         Matrix B(nrows, ncols, lacomm);
-        MPI_Barrier(lacomm);
 
         //	A.zeroInitialize();
         A.randomInitialize();
         A.printMatrix();
-
-        sleep(3);
-        MPI_Barrier(lacomm);
 
         if (comm_rank == 0) std::cout << "Rescaling of A" << std::endl;
 
         A.scaleMatrix(0.01);
         A.printMatrix();
 
-        sleep(3);
-        MPI_Barrier(lacomm);
-
         if (comm_rank == 0) std::cout << "Initialization of B" << std::endl;
 
         B.identityInitialize();
         B.printMatrix();
-        sleep(3);
-
-        MPI_Barrier(lacomm);
 
         if (comm_rank == 0) std::cout << "A+B" << std::endl;
 
         A.matrixSum(B);
-        MPI_Barrier(lacomm);
-        sleep(3);
         A.printMatrix();
-        sleep(3);
-        //	A.computeFrobeniusNorm();
-        // A.matrixSum();
-        //
 
         A.orthogonalize(10, 0.1);
 
-        MPI_Barrier(lacomm);
-        sleep(3);
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
         A.printMatrix();
 
