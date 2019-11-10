@@ -306,7 +306,7 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dZ, *dY, *dZaux;
+    double *dZ, *dY, *dZaux, *dZtemp;
     double* dZY;
     double* dIntermediate;
     magma_dmalloc(&dI, lddc * dim_);
@@ -329,25 +329,22 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         magmablas_dgemm(MagmaTrans, MagmaNoTrans, dim_, dim_, dim_, alpha, dZ,
             lddc, dY, lddc, beta, dZY, lddc, queue);
 
-        // Compute 3I-ZY
+        // Compute 0.5*(3I-ZY)
         magma_dcopymatrix(dim_, dim_, dZY, lddc, dIntermediate, lddc, queue);
         magmablas_dgeadd2(
-            dim_, dim_, 3.0, dI, lddc, -1.0, dIntermediate, lddc, queue);
+            dim_, dim_, 1.5, dI, lddc, -0.5, dIntermediate, lddc, queue);
 
-        // Compute (3I-ZY)Z
+        // Compute 0.5*(3I-ZY)Z
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
-
-        // Rescale by 1/2
-        int val = 0;
-        magmablas_dlascl(
-            MagmaFull, 0, 0, 2.0, 1.0, dim_, dim_, dZaux, lddc, queue, &val);
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
-        magma_dcopymatrix(dim_, dim_, dZaux, lddc, dZ, lddc, queue);
+        dZtemp = dZ;
+        dZ     = dZaux;
+        dZaux  = dZtemp;
 
         count_iter++;
     }
