@@ -1,7 +1,8 @@
 set(SOURCES_TESTMPI ${CMAKE_SOURCE_DIR}/tests/testMPI.cc)
 set(SOURCES_TESTMAGMA ${CMAKE_SOURCE_DIR}/tests/testMAGMA.cc)
 set(SOURCES_TESTMAXNORM ${CMAKE_SOURCE_DIR}/tests/testMaxNormReplicated.cc
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp)
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 set(SOURCES_TESTSCHULZ ${CMAKE_SOURCE_DIR}/tests/testSchulz.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)

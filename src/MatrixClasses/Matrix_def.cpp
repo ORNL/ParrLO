@@ -4,6 +4,8 @@
 #include <iostream>
 #include <random>
 
+Timer Matrix::compute_aTa_tm_("Matrix::compute_aTa");
+
 Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     : n_rows_(n), n_cols_(m), lacomm_(comm)
 {
@@ -411,10 +413,16 @@ void Matrix::computeAtA()
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
+    // Start timer to measure time to compute local A^T * A
+    compute_aTa_tm_.start();
+
     // Compute local contribution to A^T * A
     magmablas_dgemm(transA, transB, m, n, k, alpha, device_data_, ldda,
         device_data_, lddb, beta, replicated_S_, lddc, queue);
     magma_queue_destroy(queue);
+
+    // Stop timer to measure time to compute local A^T * A
+    compute_aTa_tm_.stop();
 
 #endif
 }
