@@ -5,6 +5,7 @@
 #include <memory> //needed for unique pointers
 #include <mpi.h>
 #include <vector>
+#include "Timer.hpp"
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
@@ -24,6 +25,10 @@ private:
     bool own_data_;
 
     bool data_initialized_ = false;
+
+    static Timer allreduce_tm_;
+    static Timer schulz_iteration_tm_;
+    static Timer single_schulz_iteration_tm_;
 
     // compute eigenvectors and eigenvalues of matrix
     void diagonalize(double* evecs, std::vector<double>& evals);
@@ -80,9 +85,17 @@ public:
     void SchulzStabilizedSingle(unsigned int max_iter, double tol);
     void InvSqrt();
 
+    static void printTimers(std::ostream& os)
+    {
+        allreduce_tm_.print(os);
+        schulz_iteration_tm_.print(os);
+        single_schulz_iteration_tm_.print(os);
+    }
+
     // Friend methods
     // Compute convergence criterion for Schulz iteration
     friend double relativeDiscrepancy(
         size_t, size_t, const double*, const double*);
 };
+
 #endif
