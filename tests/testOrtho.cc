@@ -78,6 +78,11 @@ int main(int argc, char** argv)
                     << " and dfo after orthogonalizing: " << dfo_after
                     << std::endl;
             A.printMatrix();
+
+            // Print timers for operations performed on Replicated matrix
+            Replicated::printTimers(std::cout);
+            Matrix::printTimers(std::cout);
+
             MPI_Comm_free(&lacomm);
 
 #ifdef USE_MAGMA
