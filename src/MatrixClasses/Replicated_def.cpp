@@ -4,6 +4,10 @@
 #include <iostream>
 #include <random>
 
+Timer Replicated::allreduce_tm_("Replicated::allreduce");
+Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
+Timer Replicated::single_schulz_iteration_tm_("Replicated::single_schulz_iteration");
+
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 {
     double normA = 0.0;
@@ -236,6 +240,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_dcopymatrix(dim_, dim_, device_data_, lddc, dY, lddc, queue);
     magmablas_dlaset(MagmaFull, lddc, dim_, 0.0, 1.0, dZ, lddc, queue);
 
+    //Start timer for Schulz iteration
+    schulz_iteration_tm_.start();
+
     while ((count_iter < max_iter) & (discrepancy > tol))
     {
         // Compute ZY
@@ -269,6 +276,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 
         count_iter++;
     }
+
+    //Stop timer for Schulz iteration
+    schulz_iteration_tm_.stop();
 
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
@@ -319,6 +329,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dI, lddc, queue);
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dZ, lddc, queue);
 
+    //Start timer for Schulz iteration
+    single_schulz_iteration_tm_.start();
+
     while ((count_iter < max_iter) & (discrepancy > tol))
     {
         // Compute Y = A*Z
@@ -348,6 +361,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 
         count_iter++;
     }
+
+    //Stop timer for Schulz iteration
+    single_schulz_iteration_tm_.stop();
 
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
@@ -516,13 +532,22 @@ void Replicated::consolidate()
     // copy from GPU to CPU
     magma_dgetmatrix(dim_, dim_, device_data_, ld, &hC[0], dim_, queue);
 
+    //Start timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.start();    
+
     // replicated matrix data is sum of all partial matrices
     MPI_Allreduce(&hC[0], &hCsum[0], dim_ * dim_, MPI_DOUBLE, MPI_SUM, lacomm_);
 
+    //Stop timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.stop();    
+
     magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
 
-    std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
-    magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
+    if(verbosity > 0)
+    {
+       std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
+       magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
+    }
 
     magma_queue_destroy(queue);
 }
