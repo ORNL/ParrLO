@@ -543,5 +543,11 @@ void Replicated::consolidate()
 
     magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
 
+    if(verbosity > 0)
+    {
+       std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
+       magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
+    }
+
     magma_queue_destroy(queue);
 }

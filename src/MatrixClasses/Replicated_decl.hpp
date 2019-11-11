@@ -26,6 +26,9 @@ private:
 
     bool data_initialized_ = false;
 
+    //Level of verbosity for printouts - default value is 0 which means silent
+    int verbosity = 0;
+
     static Timer allreduce_tm_;
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;

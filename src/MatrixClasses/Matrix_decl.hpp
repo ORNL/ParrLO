@@ -18,16 +18,24 @@ private:
     size_t n_rows_; // number of rows
     size_t n_cols_; // number of columns
     MPI_Comm lacomm_;
+ 
     std::vector<double> host_data_; // vector for data on host
     double* device_data_ = nullptr; // pointer to basic data structure on gpu
+
     // std::unique_ptr<double[]> host_data_; //I want to avoid that the original
     // data gets corrupted
     double* replicated_S_ = nullptr;
     size_t n_rows_local_;
     std::vector<size_t> global_row_id_;
     std::vector<size_t> local_row_id_;
+
+    //Timers
+    static Timer compute_aTa_tm_;
+
+    //Boolean variables
     bool host_data_initialized_   = false;
     bool device_data_initialized_ = false;
+
     // Compute local contributions to aTa
     void computeAtA();
 
@@ -98,6 +106,12 @@ public:
 
     // Routine to check orthogonality
     double orthogonalityCheck();
+
+    //Print values of timers
+    static void printTimers(std::ostream& os)
+    {
+        compute_aTa_tm_.print(os);
+    }
 
     // FRIEND methods
     friend double relativeDiscrepancy(
