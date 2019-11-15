@@ -163,6 +163,9 @@ int main(int argc, char** argv)
         matrix_time.stop();
 
         matrix_time.print(std::cout);
+
+        Replicated::printTimers(std::cout);
+        Matrix::printTimers(std::cout);
     }
 #ifdef USE_MAGMA
     magma_finalize();
