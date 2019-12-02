@@ -1,11 +1,11 @@
 #ifndef REPLICATED_DECL_HPP
 #define REPLICATED_DECL_HPP
 
+#include "Timer.hpp"
 #include <algorithm>
 #include <memory> //needed for unique pointers
 #include <mpi.h>
 #include <vector>
-#include "Timer.hpp"
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
@@ -26,10 +26,13 @@ private:
 
     bool data_initialized_ = false;
 
-    //Level of verbosity for printouts - default value is 0 which means silent
-    int verbosity = 0;
+    // Level of verbosity for printouts - default value is 0 which means silent
+    int verbosity_ = 0;
 
     static Timer allreduce_tm_;
+    static Timer copy_tm_;
+    static Timer memory_initialization_tm_;
+    static Timer memory_free_tm_;
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;
 
@@ -40,13 +43,13 @@ private:
     void consolidate();
 
 public:
-    Replicated(const size_t dim, MPI_Comm);
+    Replicated(const size_t dim, MPI_Comm, int verbosity = 0);
 
     // Copy constructor
     Replicated(const Replicated& mat);
 
     // Build matrix with local (partial) contributions to matrix elements
-    Replicated(double*, size_t, MPI_Comm);
+    Replicated(double*, size_t, MPI_Comm, int verbosity = 0);
 
     ~Replicated();
 
@@ -91,6 +94,9 @@ public:
     static void printTimers(std::ostream& os)
     {
         allreduce_tm_.print(os);
+        copy_tm_.print(os);
+        memory_initialization_tm_.print(os);
+        memory_free_tm_.print(os);
         schulz_iteration_tm_.print(os);
         single_schulz_iteration_tm_.print(os);
     }

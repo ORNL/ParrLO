@@ -5,8 +5,13 @@
 #include <random>
 
 Timer Replicated::allreduce_tm_("Replicated::allreduce");
+Timer Replicated::memory_initialization_tm_(
+    "Replicated::memory_initialization");
+Timer Replicated::memory_free_tm_("Replicated::memory_free");
+Timer Replicated::copy_tm_("Replicated::copy");
 Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
-Timer Replicated::single_schulz_iteration_tm_("Replicated::single_schulz_iteration");
+Timer Replicated::single_schulz_iteration_tm_(
+    "Replicated::single_schulz_iteration");
 
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 {
@@ -48,8 +53,8 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     return normC / normA;
 }
 
-Replicated::Replicated(const size_t dim, MPI_Comm comm)
-    : dim_(dim), lacomm_(comm)
+Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
+    : dim_(dim), lacomm_(comm), verbosity_(verbosity)
 {
     data_initialized_ = false;
     size_t ld         = magma_roundup(dim_, 32);
@@ -58,8 +63,9 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm)
     own_data_ = true;
 }
 
-Replicated::Replicated(double* partial, size_t dim, MPI_Comm comm)
-    : lacomm_(comm), dim_(dim), device_data_(partial)
+Replicated::Replicated(
+    double* partial, size_t dim, MPI_Comm comm, int verbosity)
+    : lacomm_(comm), dim_(dim), device_data_(partial), verbosity_(verbosity)
 {
     data_initialized_ = true;
     own_data_         = false;
@@ -87,6 +93,7 @@ Replicated::Replicated(const Replicated& mat)
     magma_queue_destroy(queue);
 
     data_initialized_ = true;
+    verbosity_        = mat.verbosity_;
 }
 
 Replicated::~Replicated()
@@ -228,6 +235,10 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     double *dZ, *dZaux, *dZtemp;
     double* dZY;
     double* dIntermediate;
+
+    // Start timer for memory initialization
+    memory_initialization_tm_.start();
+
     magma_dmalloc(&dI, lddc * dim_);
     magma_dmalloc(&dY, lddc * dim_);
     magma_dmalloc(&dZ, lddc * dim_);
@@ -236,11 +247,22 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_dmalloc(&dZY, lddc * dim_);
     magma_dmalloc(&dIntermediate, lddc * dim_);
 
+    // Stop timer for memory initialization
+    memory_initialization_tm_.stop();
+
     magmablas_dlaset(MagmaFull, lddc, dim_, 0.0, 1.0, dI, lddc, queue);
+
+    // Start timer for memory copy
+    copy_tm_.start();
+
     magma_dcopymatrix(dim_, dim_, device_data_, lddc, dY, lddc, queue);
+
+    // Stop timer for memory copy
+    copy_tm_.stop();
+
     magmablas_dlaset(MagmaFull, lddc, dim_, 0.0, 1.0, dZ, lddc, queue);
 
-    //Start timer for Schulz iteration
+    // Start timer for Schulz iteration
     schulz_iteration_tm_.start();
 
     while ((count_iter < max_iter) & (discrepancy > tol))
@@ -250,7 +272,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
             lddc, dY, lddc, beta, dZY, lddc, queue);
 
         // Compute 1.5*I-0.5*ZY
+        copy_tm_.start();
         magma_dcopymatrix(dim_, dim_, dZY, lddc, dIntermediate, lddc, queue);
+        copy_tm_.stop();
         magmablas_dgeadd2(
             dim_, dim_, 1.5, dI, lddc, -0.5, dIntermediate, lddc, queue);
 
@@ -277,11 +301,20 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         count_iter++;
     }
 
-    //Stop timer for Schulz iteration
+    // Stop timer for Schulz iteration
     schulz_iteration_tm_.stop();
+
+    // Start timer for memory copy
+    copy_tm_.start();
 
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
+
+    // Stop timer for memory copy
+    copy_tm_.stop();
+
+    // Start timer for memory free
+    memory_free_tm_.start();
 
     magma_free(dY);
     magma_free(dZ);
@@ -291,6 +324,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_free(dIntermediate);
     magma_free(dwork);
     magma_queue_destroy(queue);
+
+    // Stop timer for memory free
+    memory_free_tm_.stop();
 
 #endif
 }
@@ -319,6 +355,10 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     double *dZ, *dY, *dZaux, *dZtemp;
     double* dZY;
     double* dIntermediate;
+
+    // Start timer for memory initialization
+    memory_initialization_tm_.start();
+
     magma_dmalloc(&dI, lddc * dim_);
     magma_dmalloc(&dY, lddc * dim_);
     magma_dmalloc(&dZ, lddc * dim_);
@@ -326,10 +366,13 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_dmalloc(&dZY, lddc * dim_);
     magma_dmalloc(&dIntermediate, lddc * dim_);
 
+    // Stop timer for memory initialization
+    memory_initialization_tm_.stop();
+
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dI, lddc, queue);
     magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dZ, lddc, queue);
 
-    //Start timer for Schulz iteration
+    // Start timer for Schulz iteration
     single_schulz_iteration_tm_.start();
 
     while ((count_iter < max_iter) & (discrepancy > tol))
@@ -343,7 +386,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
             lddc, dY, lddc, beta, dZY, lddc, queue);
 
         // Compute 0.5*(3I-ZY)
+        copy_tm_.start();
         magma_dcopymatrix(dim_, dim_, dZY, lddc, dIntermediate, lddc, queue);
+        copy_tm_.stop();
         magmablas_dgeadd2(
             dim_, dim_, 1.5, dI, lddc, -0.5, dIntermediate, lddc, queue);
 
@@ -362,11 +407,20 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         count_iter++;
     }
 
-    //Stop timer for Schulz iteration
+    // Stop timer for Schulz iteration
     single_schulz_iteration_tm_.stop();
+
+    // Start timer for copy
+    copy_tm_.start();
 
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
+
+    // Stop timer for copy
+    copy_tm_.stop();
+
+    // Start timer for freeign memory
+    memory_free_tm_.start();
 
     magma_free(dZ);
     magma_free(dY);
@@ -375,6 +429,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_free(dIntermediate);
     magma_free(dwork);
     magma_queue_destroy(queue);
+
+    // Stop timer for memory free
+    memory_free_tm_.stop();
 
 #endif
 }
@@ -532,21 +589,21 @@ void Replicated::consolidate()
     // copy from GPU to CPU
     magma_dgetmatrix(dim_, dim_, device_data_, ld, &hC[0], dim_, queue);
 
-    //Start timer to measure time spent in MPI_Allreduce
-    allreduce_tm_.start();    
+    // Start timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.start();
 
     // replicated matrix data is sum of all partial matrices
     MPI_Allreduce(&hC[0], &hCsum[0], dim_ * dim_, MPI_DOUBLE, MPI_SUM, lacomm_);
 
-    //Stop timer to measure time spent in MPI_Allreduce
-    allreduce_tm_.stop();    
+    // Stop timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.stop();
 
     magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
 
-    if(verbosity > 0)
+    if (verbosity_ > 0)
     {
-       std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
-       magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
+        std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
+        magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
     }
 
     magma_queue_destroy(queue);

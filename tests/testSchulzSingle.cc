@@ -105,7 +105,7 @@ int main(int argc, char** argv)
     tstime.stop();
     tstime.print(std::cout);
 
-    //Print timers for operations performed on Replicated matrix 
+    // Print timers for operations performed on Replicated matrix
     B.printTimers(std::cout);
 
     mpirc = MPI_Finalize();

@@ -22,6 +22,11 @@ namespace po = boost::program_options;
 // [Matrix]
 // nrows=32
 // ncols=4
+// [Rescaling]
+// rescaling=0.01
+// [Schulz_iteration]
+// max_iterations=100
+// tolerance=1e-4
 
 int main(int argc, char** argv)
 {
@@ -38,13 +43,16 @@ int main(int argc, char** argv)
 
         MPI_Comm_dup(MPI_COMM_WORLD, &lacomm);
 
-        std::cout << "MPI SUCCESS" << i << std::endl;
+        // std::cout << "MPI SUCCESS" << i << std::endl;
 
         int comm_rank, comm_size;
         MPI_Comm_rank(lacomm, &comm_rank);
         MPI_Comm_size(lacomm, &comm_size);
 
         std::vector<int> idata;
+        double irescaling;
+        int imax_iterations;
+        double itolerance;
 
         // read run time-parameters from PE0
         if (comm_rank == 0)
@@ -61,7 +69,13 @@ int main(int argc, char** argv)
             po::options_description config("Configuration");
             config.add_options()("Matrix.nrows", po::value<int>()->required(),
                 "number of matrix rows")("Matrix.ncols",
-                po::value<int>()->required(), "number of matrix columns");
+                po::value<int>()->required(), "number of matrix columns")(
+                "Rescaling.rescaling", po::value<double>()->required(),
+                "rescaling for perturbation from orthogonality")(
+                "Schulz_iteration.max_iterations", po::value<int>()->required(),
+                "maximum number of iterations allowed for Schulz algorithm")(
+                "Schulz_iteration.tolerance", po::value<double>()->required(),
+                "stopping tolerance for Schulz algorithm");
 
             po::options_description cmdline_options;
             cmdline_options.add(generic);
@@ -95,6 +109,9 @@ int main(int argc, char** argv)
             // to bcast to other MPI tasks
             idata.push_back(vm["Matrix.nrows"].as<int>());
             idata.push_back(vm["Matrix.ncols"].as<int>());
+            irescaling      = vm["Rescaling.rescaling"].as<double>();
+            imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
+            itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
         }
 
         // broadcast input parameters to all MPI tasks
@@ -103,6 +120,9 @@ int main(int argc, char** argv)
 
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, lacomm);
+        MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, lacomm);
+        MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, lacomm);
+        MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, lacomm);
 
         std::string name = "matrix_example";
         Timer matrix_time(name);
@@ -127,42 +147,61 @@ int main(int argc, char** argv)
 
         //	A.zeroInitialize();
         A.randomInitialize();
-        A.printMatrix();
+        // A.printMatrix();
 
-        if (comm_rank == 0) std::cout << "Rescaling of A" << std::endl;
+        if (comm_rank == 0)
+            std::cout << "Rescaling of A with factor equal to: " << irescaling
+                      << std::endl;
 
-        A.scaleMatrix(0.01);
-        A.printMatrix();
+        A.scaleMatrix(irescaling);
+        // A.printMatrix();
 
         if (comm_rank == 0) std::cout << "Initialization of B" << std::endl;
 
         B.identityInitialize();
-        B.printMatrix();
+        // B.printMatrix();
 
         if (comm_rank == 0) std::cout << "A+B" << std::endl;
 
         A.matrixSum(B);
-        A.printMatrix();
-
-        A.orthogonalize(10, 0.1);
-
-        if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
-        A.printMatrix();
-
-        if (comm_rank == 0) std::cout << "Orthogonality check A" << std::endl;
-
+        // A.printMatrix();
+        //
         double departure_from_orthogonality = 0.0;
         departure_from_orthogonality        = A.orthogonalityCheck();
 
         if (comm_rank == 0)
-            std::cout << "Departure from orthogonality: "
-                      << departure_from_orthogonality << std::endl;
+            std::cout
+                << "Departure from orthogonality before re-orthogonalizing: "
+                << departure_from_orthogonality << std::endl;
+
+        std::string name_ortho = "orthogonalization";
+        Timer orthogonalization_timer(name_ortho);
+
+        orthogonalization_timer.start();
+        A.orthogonalize(imax_iterations, itolerance);
+        orthogonalization_timer.stop();
+
+        if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
+        // A.printMatrix();
+
+        if (comm_rank == 0) std::cout << "Orthogonality check A" << std::endl;
+
+        departure_from_orthogonality = A.orthogonalityCheck();
+
+        if (comm_rank == 0)
+            std::cout
+                << "Departure from orthogonality after re-orthogonalizing: "
+                << departure_from_orthogonality << std::endl;
 
         MPI_Comm_free(&lacomm);
 
         matrix_time.stop();
 
         matrix_time.print(std::cout);
+        orthogonalization_timer.print(std::cout);
+
+        Replicated::printTimers(std::cout);
+        Matrix::printTimers(std::cout);
     }
 #ifdef USE_MAGMA
     magma_finalize();
