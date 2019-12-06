@@ -13,6 +13,14 @@ set(SOURCES_TESTORTHO ${CMAKE_SOURCE_DIR}/tests/testOrtho.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
+set(SOURCES_TESTORTHO_GAUSSIAN ${CMAKE_SOURCE_DIR}/tests/testOrthoGaussian.cc
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
+set(SOURCES_TESTORTHO_HAT ${CMAKE_SOURCE_DIR}/tests/testOrthoHatFunction.cc
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
+                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 
 set(MAIN_TESTMPI testMPI)
 add_executable(${MAIN_TESTMPI} ${SOURCES_TESTMPI})
@@ -26,8 +34,12 @@ set(MAIN_TESTSCHULZSINGLE testSchulzSingle)
 add_executable(${MAIN_TESTSCHULZSINGLE} ${SOURCES_TESTSCHULZSINGLE})
 set(MAIN_TESTORTHO testOrtho)
 add_executable(${MAIN_TESTORTHO} ${SOURCES_TESTORTHO})
+set(MAIN_TESTORTHO_GAUSSIAN testOrthoGaussian)
+add_executable(${MAIN_TESTORTHO_GAUSSIAN} ${SOURCES_TESTORTHO_GAUSSIAN})
+set(MAIN_TESTORTHO_HAT testOrthoHatFunction)
+add_executable(${MAIN_TESTORTHO_HAT} ${SOURCES_TESTORTHO_HAT})
 
-foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO})
+foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO} ${MAIN_TESTORTHO_GAUSSIAN} ${MAIN_TESTORTHO_HAT})
   target_link_libraries(${X} PRIVATE ${BLAS_LIBRARIES})
   target_link_libraries(${X} PRIVATE ${MPI_CXX_LIBRARIES})
   target_include_directories(${X} PRIVATE ${MPI_CXX_INCLUDE_DIRS})
@@ -35,7 +47,7 @@ foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHUL
 endforeach()
 
 if (${BUILD_FOR_GPU})
-  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO})
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO} ${MAIN_TESTORTHO_GAUSSIAN} ${MAIN_TESTORTHO_HAT})
     target_link_libraries(${X} PRIVATE PkgConfig::MAGMA)
     set_target_properties(${X} PROPERTIES
       CUDA_SEPARABLE_COMPILATION ON
@@ -47,7 +59,7 @@ if (${BUILD_FOR_GPU})
       CXX_STANDARD_REQUIRED ON)
   endforeach()
 else()
-  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO})
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO} ${MAIN_TESTORTHO_GAUSSIAN} ${MAIN_TESTORTHO_HAT})
     set_target_properties(${X} PROPERTIES
       CXX_STANDARD_REQUIRED ON
       CXX_STANDARD 11
@@ -57,7 +69,7 @@ endif()
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
-  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO})
+  foreach(X ${MAIN_TESTMPI} ${MAIN_TESTMAGMA} ${MAIN_TESTMAXNORM} ${MAIN_TESTSCHULZ} ${MAIN_TESTSCHULZSINGLE} ${MAIN_TESTORTHO} ${MAIN_TESTORTHO_GAUSSIAN} ${MAIN_TESTORTHO_HAT})
     target_link_libraries(${X} PUBLIC OpenMP::OpenMP_CXX)
   endforeach()
 endif()
@@ -72,12 +84,23 @@ add_test(NAME testMAGMA
 add_test(NAME testMaxNormReplicated
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testMaxNormReplicated)
+
 add_test(NAME testSchulz
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testSchulz)
+
 add_test(NAME testSchulzSingle
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testSchulzSingle)
+
 add_test(NAME testOrtho
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testOrtho)
+
+add_test(NAME testOrthoGaussian
+         COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
+         ${CMAKE_CURRENT_BINARY_DIR}/testOrthoGaussian)
+
+add_test(NAME testOrthoHatFunction
+         COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
+         ${CMAKE_CURRENT_BINARY_DIR}/testOrthoHatFunction)

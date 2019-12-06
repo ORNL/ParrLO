@@ -67,6 +67,12 @@ public:
     // Set entries of the matrix to random values
     void randomInitialize();
 
+    // Set columns of the matrix to Gaussian functions
+    void gaussianColumnsInitialize(double);
+
+    // Set columns of the matrix to Gaussian functions
+    void hatColumnsInitialize(double);
+
     // Routines to retrieve info about the size of a matrix
     size_t getNumRows() const;
     size_t getNumRowsLocal() const;
