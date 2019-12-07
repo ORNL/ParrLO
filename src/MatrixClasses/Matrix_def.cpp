@@ -265,6 +265,63 @@ void Matrix::randomInitialize()
     this->transferDataCPUtoGPU();
 }
 
+void Matrix::gaussianColumnsInitialize(double standard_deviation)
+{
+    assert(!host_data_initialized_);
+    assert(standard_deviation > 0.0);
+
+    double scaling_factor = 1. / (std::sqrt(2 * M_PI) * standard_deviation);
+
+    for (size_t j = 0; j < n_cols_; ++j)
+    {
+        size_t gaussian_center = j * size_t(n_rows_ / n_cols_);
+        for (size_t i = 0; i < n_rows_local_; ++i)
+        {
+            size_t global_index = global_row_id_[i];
+            double exponent     = (static_cast<double>(global_index)
+                                  - static_cast<double>(gaussian_center))
+                              / standard_deviation;
+            exponent *= exponent;
+            exponent = -0.5 * exponent;
+            host_data_[i + j * n_rows_local_]
+                = scaling_factor * std::exp(exponent);
+        }
+    }
+
+    host_data_initialized_ = true;
+    this->transferDataCPUtoGPU();
+}
+
+void Matrix::hatColumnsInitialize(double support_length_ratio)
+{
+    assert(!host_data_initialized_);
+    assert(support_length_ratio > 0.0 & support_length_ratio < 1.0);
+
+    for (size_t j = 0; j < n_cols_; ++j)
+    {
+        int hat_center = int(j) * int(int(n_rows_) / int(n_cols_));
+        int beginning_support
+            = hat_center - int(support_length_ratio * double(n_rows_));
+        int end_support
+            = hat_center + int(support_length_ratio * double(n_rows_));
+        for (size_t i = 0; i < n_rows_local_; ++i)
+        {
+            size_t global_index = global_row_id_[i];
+            double hat_value    = 0.0;
+            hat_value
+                = 1
+                  - static_cast<double>(
+                        std::abs(hat_center - int(global_index)))
+                        / static_cast<double>(hat_center - beginning_support);
+            hat_value                         = std::max(0.0, hat_value);
+            host_data_[i + j * n_rows_local_] = hat_value;
+        }
+    }
+
+    host_data_initialized_ = true;
+    this->transferDataCPUtoGPU();
+}
+
 size_t Matrix::getNumRows() const { return n_rows_; }
 size_t Matrix::getNumRowsLocal() const { return n_rows_local_; }
 size_t Matrix::getNumCols() const { return n_cols_; }
