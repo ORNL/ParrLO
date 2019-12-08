@@ -48,13 +48,6 @@ int main(int argc, char** argv)
         Matrix B(nrows, ncols, lacomm);
 
         A.hatColumnsInitialize(0.1);
-        A.scaleMatrix(0.01);
-        A.printMatrix();
-
-        B.identityInitialize();
-        B.printMatrix();
-
-        A.matrixSum(B);
         A.printMatrix();
 
         double dfo_before = 0.0;
