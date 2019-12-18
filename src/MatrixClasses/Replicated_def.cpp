@@ -60,6 +60,11 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
     size_t ld         = magma_roundup(dim_, 32);
 
     magma_dmalloc(&device_data_, dim_ * ld);
+
+    diagonal_.resize(dim_);
+    for (size_t i = 0; i < dim_; ++i)
+        diagonal_[i] = 1.0;
+
     own_data_ = true;
 }
 
@@ -69,6 +74,10 @@ Replicated::Replicated(
 {
     data_initialized_ = true;
     own_data_         = false;
+
+    diagonal_.resize(dim_);
+    for (size_t i = 0; i < dim_; ++i)
+        diagonal_[i] = 1.0;
 
     // data is sum of partial contributions
     consolidate();
@@ -86,6 +95,10 @@ Replicated::Replicated(const Replicated& mat)
     int device;
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
+
+    diagonal_.resize(dim_);
+    for (size_t i = 0; i < dim_; ++i)
+        diagonal_[i] = 1.0;
 
     magma_dcopymatrix(
         dim_, dim_, mat.device_data_, ld, device_data_, ld, queue);
@@ -208,6 +221,71 @@ double Replicated::maxNorm() const
     magma_free(dwork);
 
     return norm;
+}
+
+void Replicated::preRescale()
+{
+    magma_queue_t queue;
+    int device, info;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+    size_t lddc = magma_roundup(dim_, 32);
+
+    // Rescale the device_data_
+    std::vector<double> host_inv_sqrt_diagonal;
+    host_inv_sqrt_diagonal.resize(dim_);
+
+    for (size_t i = 0; i < dim_; ++i)
+        host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
+
+    double* device_inv_sqrt_diagonal;
+    magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
+    magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
+        device_inv_sqrt_diagonal, 1, queue);
+
+    // Compute D^(-1/2)*S
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+        device_data_, lddc, queue, &info);
+
+    // Compute (D^(-1/2)*S)^T = S * D^(-1/2)
+    magmablas_dtranspose_inplace(dim_, device_data_, lddc, queue);
+
+    // Compute D^(-1/2) * S * D^(-1/2)
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+        device_data_, lddc, queue, &info);
+
+    magma_free(device_inv_sqrt_diagonal);
+
+    magma_queue_destroy(queue);
+}
+
+void Replicated::postRescale()
+{
+    magma_queue_t queue;
+    int device, info;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+    size_t lddc = magma_roundup(dim_, 32);
+
+    // Rescale the device_data_
+    std::vector<double> host_inv_sqrt_diagonal;
+    host_inv_sqrt_diagonal.resize(dim_);
+
+    for (size_t i = 0; i < dim_; ++i)
+        host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
+
+    double* device_inv_sqrt_diagonal;
+    magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
+    magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
+        device_inv_sqrt_diagonal, 1, queue);
+
+    // Compute D^(-1/2) * S_tilde
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+        device_data_, lddc, queue, &info);
+
+    magma_free(device_inv_sqrt_diagonal);
+
+    magma_queue_destroy(queue);
 }
 
 void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
@@ -599,6 +677,10 @@ void Replicated::consolidate()
     allreduce_tm_.stop();
 
     magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
+
+    // Extract the diagonal matrix of the replicated matrix
+    for (size_t i = 0; i < dim_; ++i)
+        diagonal_[i] = hCsum[i + i * dim_];
 
     if (verbosity_ > 0)
     {

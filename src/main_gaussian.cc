@@ -24,6 +24,8 @@ namespace po = boost::program_options;
 // ncols=4
 // [Rescaling]
 // rescaling=0.01
+// [Gaussian]
+// std=0.1
 // [Schulz_iteration]
 // max_iterations=100
 // tolerance=1e-4
@@ -53,6 +55,7 @@ int main(int argc, char** argv)
         double irescaling;
         int imax_iterations;
         double itolerance;
+        double standard_deviation;
 
         // read run time-parameters from PE0
         if (comm_rank == 0)
@@ -111,7 +114,8 @@ int main(int argc, char** argv)
             idata.push_back(vm["Matrix.ncols"].as<int>());
             irescaling      = vm["Rescaling.rescaling"].as<double>();
             imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
-            itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
+            istandard_deviation = vm["Gaussian.std"].as<double>();
+            itolerance          = vm["Schulz_iteration.tolerance"].as<double>();
         }
 
         // broadcast input parameters to all MPI tasks
@@ -124,7 +128,7 @@ int main(int argc, char** argv)
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, lacomm);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, lacomm);
 
-        std::string name = "matrix_example";
+        std::string name = "main_gaussian";
         Timer matrix_time(name);
         matrix_time.start();
 
@@ -145,7 +149,10 @@ int main(int argc, char** argv)
         Matrix A(nrows, ncols, lacomm);
         Matrix B(nrows, ncols, lacomm);
 
-        A.gaussianColumnsInitialize(0.1);
+        // A.zeroInitialize();
+        // A.randomInitialize();
+        A.gaussianColumnsInitialize(0.01);
+        // A.printMatrix();
 
         double departure_from_orthogonality = 0.0;
         departure_from_orthogonality        = A.orthogonalityCheck();
@@ -159,7 +166,7 @@ int main(int argc, char** argv)
         Timer orthogonalization_timer(name_ortho);
 
         orthogonalization_timer.start();
-        A.orthogonalize_iterative_method(imax_iterations, itolerance);
+        A.orthogonalize(imax_iterations, itolerance);
         orthogonalization_timer.stop();
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
