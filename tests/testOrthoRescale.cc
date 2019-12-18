@@ -47,7 +47,14 @@ int main(int argc, char** argv)
         Matrix A(nrows, ncols, lacomm);
         Matrix B(nrows, ncols, lacomm);
 
-        A.gaussianColumnsInitialize(0.8);
+        A.randomInitialize();
+        A.scaleMatrix(0.01);
+        A.printMatrix();
+
+        B.identityInitialize();
+        B.printMatrix();
+
+        A.matrixSum(B);
         A.printMatrix();
 
         double dfo_before = 0.0;
@@ -58,7 +65,10 @@ int main(int argc, char** argv)
         // re-orthogonalizing
         dfo_before = A.orthogonalityCheck();
 
-        A.orthogonalize_iterative_method(10, 1.e-4);
+        // Activate pre and post-rescaling
+        A.activateRescaling();
+
+        A.orthogonalize_iterative_method(10, 1.e-8);
 
         dfo_after = A.orthogonalityCheck();
 

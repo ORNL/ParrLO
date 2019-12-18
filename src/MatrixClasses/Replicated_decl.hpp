@@ -19,6 +19,7 @@ private:
     size_t dim_      = 0; // dimension of replicated Matrix
     MPI_Comm lacomm_ = NULL;
     double* device_data_; // pointer to basic data structure
+    std::vector<double> diagonal_;
 
     // flag to specify is object is responsible for releasing memory
     // associated with device_data_
@@ -83,6 +84,12 @@ public:
 
     // set diagonal matrix with uniform value alpha
     void setDiagonal(const double alpha);
+
+    // pre-rescaling of the Replicated matrix
+    void preRescale();
+
+    // post-rescaling of the Replicated matrix
+    void postRescale();
 
     // Coupled Schulz iteraion
     void SchulzCoupled(unsigned int max_iter, double tol);

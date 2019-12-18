@@ -35,6 +35,7 @@ private:
     // Boolean variables
     bool host_data_initialized_   = false;
     bool device_data_initialized_ = false;
+    bool apply_rescaling_         = false;
 
     // Compute local contributions to aTa
     void computeAtA();
@@ -73,6 +74,9 @@ public:
     // Set columns of the matrix to Gaussian functions
     void hatColumnsInitialize(double);
 
+    // Option to activate the pre and post rescaling of the Replicated matrix
+    void activateRescaling();
+
     // Routines to retrieve info about the size of a matrix
     size_t getNumRows() const;
     size_t getNumRowsLocal() const;
@@ -107,8 +111,11 @@ public:
     // Sum of matrices
     void matrixSum(Matrix&);
 
-    // Routine for orthogonalization
-    void orthogonalize(unsigned int, double);
+    // Routine for orthogonalization using Schulz iteration
+    void orthogonalize_iterative_method(unsigned int, double);
+
+    // Routine for orthogonalization using the diagonalization of a matrix
+    void orthogonalize_direct_method();
 
     // Routine to check orthogonality
     double orthogonalityCheck();
