@@ -58,7 +58,10 @@ int main(int argc, char** argv)
         // re-orthogonalizing
         dfo_before = A.orthogonalityCheck();
 
-        A.orthogonalize_iterative_method(10, 1.e-4);
+        // Activate pre and post-rescaling
+        A.activateRescaling();
+
+        A.orthogonalize_iterative_method(10, 1.e-8);
 
         dfo_after = A.orthogonalityCheck();
 

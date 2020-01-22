@@ -322,6 +322,12 @@ void Matrix::hatColumnsInitialize(double support_length_ratio)
     this->transferDataCPUtoGPU();
 }
 
+void Matrix::activateRescaling()
+{
+    assert(!apply_rescaling_);
+    apply_rescaling_ = true;
+}
+
 size_t Matrix::getNumRows() const { return n_rows_; }
 size_t Matrix::getNumRowsLocal() const { return n_rows_local_; }
 size_t Matrix::getNumCols() const { return n_cols_; }
@@ -484,7 +490,7 @@ void Matrix::computeAtA()
 #endif
 }
 
-void Matrix::orthogonalize(unsigned int max_iter, double tol)
+void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 {
     // compute local contributions to Gram matrix
     computeAtA();
@@ -505,8 +511,58 @@ void Matrix::orthogonalize(unsigned int max_iter, double tol)
     magma_queue_create(device, &queue);
 
     Replicated AtA(replicated_S_, n_cols_, lacomm_);
+
+    if (apply_rescaling_) AtA.preRescale();
     // AtA.SchulzCoupled(max_iter, tol);
     AtA.SchulzStabilizedSingle(max_iter, tol);
+    if (apply_rescaling_) AtA.postRescale();
+
+    // Restore orthogonality on columns of A
+    double* dAortho;
+    magma_dmalloc(&dAortho, ldda * n_cols_);
+    magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, n_rows_local_, n_cols_, n_cols_,
+        alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
+        queue);
+
+    // Store re-orthogonalized matrix
+    magma_dcopymatrix(
+        n_rows_local_, n_cols_, dAortho, ldda, device_data_, ldda, queue);
+    // Copy dAortho to A on cpu
+    // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
+    // lda, queue );
+
+    // Free gpu memory
+    magma_free(dAortho);
+
+    magma_queue_destroy(queue);
+
+#endif
+}
+
+void Matrix::orthogonalize_direct_method()
+{
+    // compute local contributions to Gram matrix
+    computeAtA();
+
+    double alpha = 1.0;
+    double beta  = 0.0;
+
+#ifdef USE_MAGMA
+
+    assert(device_data_initialized_);
+
+    size_t ldda = magma_roundup(n_rows_local_, 32);
+    size_t lddc = magma_roundup(n_cols_, 32);
+
+    magma_queue_t queue;
+    int device;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+
+    Replicated AtA(replicated_S_, n_cols_, lacomm_);
+    if (apply_rescaling_) AtA.preRescale();
+    AtA.InvSqrt();
+    if (apply_rescaling_) AtA.postRescale();
 
     // Restore orthogonality on columns of A
     double* dAortho;

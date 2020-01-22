@@ -47,7 +47,7 @@ int main(int argc, char** argv)
         Matrix A(nrows, ncols, lacomm);
         Matrix B(nrows, ncols, lacomm);
 
-        A.gaussianColumnsInitialize(0.8);
+        A.hatColumnsInitialize(0.1);
         A.printMatrix();
 
         double dfo_before = 0.0;
@@ -57,6 +57,9 @@ int main(int argc, char** argv)
         // Perform the check on the departure from orthogonality before
         // re-orthogonalizing
         dfo_before = A.orthogonalityCheck();
+
+        // Activate pre and post-rescaling
+        A.activateRescaling();
 
         A.orthogonalize_iterative_method(10, 1.e-4);
 
