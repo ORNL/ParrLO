@@ -31,6 +31,10 @@ private:
 
     // Timers
     static Timer compute_aTa_tm_;
+    static Timer matrix_matrix_multiply_tm_;
+    static Timer allocate_tm_;
+    static Timer free_tm_;
+    static Timer copy_tm_;
 
     // Boolean variables
     bool host_data_initialized_   = false;
@@ -121,7 +125,14 @@ public:
     double orthogonalityCheck();
 
     // Print values of timers
-    static void printTimers(std::ostream& os) { compute_aTa_tm_.print(os); }
+    static void printTimers(std::ostream& os)
+    {
+        compute_aTa_tm_.print(os);
+        matrix_matrix_multiply_tm_.print(os);
+        allocate_tm_.print(os);
+        free_tm_.print(os);
+        copy_tm_.print(os);
+    }
 
     // FRIEND methods
     friend double relativeDiscrepancy(

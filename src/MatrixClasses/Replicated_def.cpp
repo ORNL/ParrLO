@@ -9,6 +9,10 @@ Timer Replicated::memory_initialization_tm_(
     "Replicated::memory_initialization");
 Timer Replicated::memory_free_tm_("Replicated::memory_free");
 Timer Replicated::copy_tm_("Replicated::copy");
+Timer Replicated::host_device_transfer_tm_("Replicated::host_device_transfer");
+Timer Replicated::rescale_tm_("Replicated::rescale");
+Timer Replicated::pre_rescale_tm_("Replicated::pre_rescale");
+Timer Replicated::post_rescale_tm_("Replicated::post_rescale");
 Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
 Timer Replicated::single_schulz_iteration_tm_(
     "Replicated::single_schulz_iteration");
@@ -100,8 +104,14 @@ Replicated::Replicated(const Replicated& mat)
     for (size_t i = 0; i < dim_; ++i)
         diagonal_[i] = 1.0;
 
+    // Start timer for matrix copy
+    copy_tm_.start();
+
     magma_dcopymatrix(
         dim_, dim_, mat.device_data_, ld, device_data_, ld, queue);
+
+    // Stop timer for matrix copy
+    copy_tm_.stop();
 
     magma_queue_destroy(queue);
 
@@ -181,7 +191,13 @@ void Replicated::scale(const double alpha)
 
     size_t ld = magma_roundup(dim_, 32);
 
+    // Start rescale timer
+    rescale_tm_.start();
+
     magma_dscal(dim_ * ld, alpha, device_data_, 1, queue);
+
+    // Stop rescale timer
+    rescale_tm_.stop();
 
     magma_queue_destroy(queue);
 }
@@ -238,10 +254,19 @@ void Replicated::preRescale()
     for (size_t i = 0; i < dim_; ++i)
         host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
 
+    // Start timer for memory allocation
+    memory_initialization_tm_.start();
+
     double* device_inv_sqrt_diagonal;
     magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
     magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
         device_inv_sqrt_diagonal, 1, queue);
+
+    // Stop timer for memory allocation
+    memory_initialization_tm_.stop();
+
+    // Start timer for pre-rescaling
+    pre_rescale_tm_.start();
 
     // Compute D^(-1/2)*S
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
@@ -254,7 +279,16 @@ void Replicated::preRescale()
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
         device_data_, lddc, queue, &info);
 
+    // Stop timer for pre-rescaling
+    pre_rescale_tm_.start();
+
+    // Start timer for memory deallocation
+    memory_free_tm_.start();
+
     magma_free(device_inv_sqrt_diagonal);
+
+    // Stop timer for memory deallocation
+    memory_free_tm_.stop();
 
     magma_queue_destroy(queue);
 }
@@ -274,16 +308,34 @@ void Replicated::postRescale()
     for (size_t i = 0; i < dim_; ++i)
         host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
 
+    // Start timer for memory allocation
+    memory_initialization_tm_.start();
+
     double* device_inv_sqrt_diagonal;
     magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
     magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
         device_inv_sqrt_diagonal, 1, queue);
 
+    // Stop timer for memory allocation
+    memory_initialization_tm_.stop();
+
+    // Start timer for post-rescaling
+    post_rescale_tm_.start();
+
     // Compute D^(-1/2) * S_tilde
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
         device_data_, lddc, queue, &info);
 
+    // Stop timer for post-rescaling
+    post_rescale_tm_.start();
+
+    // Start timer for memory deallocation
+    memory_free_tm_.start();
+
     magma_free(device_inv_sqrt_diagonal);
+
+    // Stop timer for memory deallocation
+    memory_free_tm_.start();
 
     magma_queue_destroy(queue);
 }
@@ -664,8 +716,14 @@ void Replicated::consolidate()
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
+    // Start timer for host-device transfer
+    host_device_transfer_tm_.start();
+
     // copy from GPU to CPU
     magma_dgetmatrix(dim_, dim_, device_data_, ld, &hC[0], dim_, queue);
+
+    // Stop timer for host-device transfer
+    host_device_transfer_tm_.stop();
 
     // Start timer to measure time spent in MPI_Allreduce
     allreduce_tm_.start();
@@ -676,7 +734,13 @@ void Replicated::consolidate()
     // Stop timer to measure time spent in MPI_Allreduce
     allreduce_tm_.stop();
 
+    // Start timer for host-device transfer
+    host_device_transfer_tm_.start();
+
     magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
+
+    // Stop timer for host-device transfer
+    host_device_transfer_tm_.stop();
 
     // Extract the diagonal matrix of the replicated matrix
     for (size_t i = 0; i < dim_; ++i)
