@@ -145,7 +145,7 @@ int main(int argc, char** argv)
         Matrix A(nrows, ncols, lacomm);
 
         A.gaussianColumnsInitialize(0.8);
-        //A.activateRescaling();
+        // A.activateRescaling();
 
         // Perform the check on the departure from orthogonality before
         // re-orthogonalizing

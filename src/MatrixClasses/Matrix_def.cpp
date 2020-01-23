@@ -526,7 +526,7 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 
     // Start allocation timer
     allocate_tm_.start();
-    
+
     magma_dmalloc(&dAortho, ldda * n_cols_);
 
     // Stop allocation timer
@@ -551,7 +551,7 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
     // Copy dAortho to A on cpu
     // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
     // lda, queue );
-    
+
     // Stop copy matrix timer
     copy_tm_.stop();
 
