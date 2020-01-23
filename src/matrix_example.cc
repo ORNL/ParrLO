@@ -143,11 +143,12 @@ int main(int argc, char** argv)
         }
 
         Matrix A(nrows, ncols, lacomm);
-        Matrix B(nrows, ncols, lacomm);
 
-        A.gaussianColumnsInitialize(0.1);
-        A.activateRescaling();
+        A.gaussianColumnsInitialize(0.8);
+        //A.activateRescaling();
 
+        // Perform the check on the departure from orthogonality before
+        // re-orthogonalizing
         double departure_from_orthogonality = 0.0;
         departure_from_orthogonality        = A.orthogonalityCheck();
 
@@ -168,6 +169,8 @@ int main(int argc, char** argv)
 
         if (comm_rank == 0) std::cout << "Orthogonality check A" << std::endl;
 
+        // Perform the check on the departure from orthogonality after
+        // re-orthogonalizing
         departure_from_orthogonality = A.orthogonalityCheck();
 
         if (comm_rank == 0)
