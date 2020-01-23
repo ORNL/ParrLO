@@ -5,6 +5,10 @@
 #include <random>
 
 Timer Matrix::compute_aTa_tm_("Matrix::compute_aTa");
+Timer Matrix::matrix_matrix_multiply_tm_("Matrix::matrix_matrix_multiply");
+Timer Matrix::copy_tm_("Matrix::copy");
+Timer Matrix::allocate_tm_("Matrix::allocate");
+Timer Matrix::free_tm_("Matrix::free");
 
 Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     : n_rows_(n), n_cols_(m), lacomm_(comm)
@@ -519,10 +523,27 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 
     // Restore orthogonality on columns of A
     double* dAortho;
+
+    // Start allocation timer
+    allocate_tm_.start();
+    
     magma_dmalloc(&dAortho, ldda * n_cols_);
+
+    // Stop allocation timer
+    allocate_tm_.stop();
+
+    // Start timer for matrix-matrix multiply
+    matrix_matrix_multiply_tm_.start();
+
     magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, n_rows_local_, n_cols_, n_cols_,
         alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
         queue);
+
+    // Stop timer for matrix-matrix multiply
+    matrix_matrix_multiply_tm_.stop();
+
+    // Start copy matrix timer
+    copy_tm_.start();
 
     // Store re-orthogonalized matrix
     magma_dcopymatrix(
@@ -530,9 +551,18 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
     // Copy dAortho to A on cpu
     // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
     // lda, queue );
+    
+    // Stop copy matrix timer
+    copy_tm_.stop();
+
+    // Start free timer
+    free_tm_.start();
 
     // Free gpu memory
     magma_free(dAortho);
+
+    // Stop free timer
+    free_tm_.stop();
 
     magma_queue_destroy(queue);
 

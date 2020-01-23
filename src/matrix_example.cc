@@ -146,6 +146,7 @@ int main(int argc, char** argv)
         Matrix B(nrows, ncols, lacomm);
 
         A.gaussianColumnsInitialize(0.1);
+        A.activateRescaling();
 
         double departure_from_orthogonality = 0.0;
         departure_from_orthogonality        = A.orthogonalityCheck();

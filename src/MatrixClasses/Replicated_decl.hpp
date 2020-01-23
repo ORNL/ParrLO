@@ -34,6 +34,8 @@ private:
     static Timer copy_tm_;
     static Timer memory_initialization_tm_;
     static Timer memory_free_tm_;
+    static Timer pre_rescale_tm_;
+    static Timer post_rescale_tm_;
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;
 
@@ -104,6 +106,8 @@ public:
         copy_tm_.print(os);
         memory_initialization_tm_.print(os);
         memory_free_tm_.print(os);
+        pre_rescale_tm_.print(os);
+        post_rescale_tm_.print(os);
         schulz_iteration_tm_.print(os);
         single_schulz_iteration_tm_.print(os);
     }
