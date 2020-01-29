@@ -523,6 +523,7 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 
     // Restore orthogonality on columns of A
     double* dAortho;
+    double* dAtemp;
 
     // Start allocation timer
     allocate_tm_.start();
@@ -542,18 +543,10 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
     // Stop timer for matrix-matrix multiply
     matrix_matrix_multiply_tm_.stop();
 
-    // Start copy matrix timer
-    copy_tm_.start();
-
-    // Store re-orthogonalized matrix
-    magma_dcopymatrix(
-        n_rows_local_, n_cols_, dAortho, ldda, device_data_, ldda, queue);
-    // Copy dAortho to A on cpu
-    // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
-    // lda, queue );
-
-    // Stop copy matrix timer
-    copy_tm_.stop();
+    // Pointer swapping
+    dAtemp       = device_data_;
+    device_data_ = dAortho;
+    dAortho      = dAtemp;
 
     // Start free timer
     free_tm_.start();
