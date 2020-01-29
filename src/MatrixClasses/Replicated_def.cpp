@@ -446,6 +446,7 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     // Start timer for memory free
     memory_free_tm_.start();
 
+    magma_free(dI);
     magma_free(dY);
     magma_free(dZ);
     magma_free(dYaux);
@@ -484,7 +485,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     double* dI;
     double *dZ, *dY, *dZaux, *dZtemp;
     double* dZY;
-    double* dIntermediate;
 
     // Start timer for memory initialization
     memory_initialization_tm_.start();
@@ -494,7 +494,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_dmalloc(&dZ, lddc * dim_);
     magma_dmalloc(&dZaux, lddc * dim_);
     magma_dmalloc(&dZY, lddc * dim_);
-    magma_dmalloc(&dIntermediate, lddc * dim_);
 
     // Stop timer for memory initialization
     memory_initialization_tm_.stop();
@@ -516,15 +515,11 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
             lddc, dY, lddc, beta, dZY, lddc, queue);
 
         // Compute 0.5*(3I-ZY)
-        copy_tm_.start();
-        magma_dcopymatrix(dim_, dim_, dZY, lddc, dIntermediate, lddc, queue);
-        copy_tm_.stop();
-        magmablas_dgeadd2(
-            dim_, dim_, 1.5, dI, lddc, -0.5, dIntermediate, lddc, queue);
+        magmablas_dgeadd2(dim_, dim_, 1.5, dI, lddc, -0.5, dZY, lddc, queue);
 
         // Compute 0.5*(3I-ZY)Z
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
-            dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
+            dZY, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
@@ -552,11 +547,11 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     // Start timer for freeign memory
     memory_free_tm_.start();
 
+    magma_free(dI);
     magma_free(dZ);
     magma_free(dY);
     magma_free(dZaux);
     magma_free(dZY);
-    magma_free(dIntermediate);
     magma_free(dwork);
     magma_queue_destroy(queue);
 
