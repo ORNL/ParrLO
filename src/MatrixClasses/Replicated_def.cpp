@@ -8,6 +8,7 @@ Timer Replicated::allreduce_tm_("Replicated::allreduce");
 Timer Replicated::memory_initialization_tm_(
     "Replicated::memory_initialization");
 Timer Replicated::memory_free_tm_("Replicated::memory_free");
+Timer Replicated::vector_allocation_tm_("Replicated::vector_allocation");
 Timer Replicated::copy_tm_("Replicated::copy");
 Timer Replicated::host_device_transfer_tm_("Replicated::host_device_transfer");
 Timer Replicated::rescale_tm_("Replicated::rescale");
@@ -701,8 +702,14 @@ void Replicated::InvSqrt()
 
 void Replicated::consolidate()
 {
+    // Start timer for vector allocation
+
+    vector_allocation_tm_.start();
     std::vector<double> hC(dim_ * dim_, 0.0);
     std::vector<double> hCsum(dim_ * dim_, 0.0);
+
+    // Stop timer for vector allocation
+    vector_allocation_tm_.stop();
 
     size_t ld = magma_roundup(dim_, 32);
 
