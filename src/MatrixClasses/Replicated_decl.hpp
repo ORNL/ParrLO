@@ -35,7 +35,7 @@ private:
     static Timer host_device_transfer_tm_;
     static Timer memory_initialization_tm_;
     static Timer memory_free_tm_;
-    static Timer vector_allocation_tm_;
+    static Timer host_array_allocation_tm_;
     static Timer rescale_tm_;
     static Timer pre_rescale_tm_;
     static Timer post_rescale_tm_;
@@ -110,7 +110,7 @@ public:
         host_device_transfer_tm_.print(os);
         memory_initialization_tm_.print(os);
         memory_free_tm_.print(os);
-        vector_allocation_tm_.print(os);
+        host_array_allocation_tm_.print(os);
         rescale_tm_.print(os);
         pre_rescale_tm_.print(os);
         post_rescale_tm_.print(os);

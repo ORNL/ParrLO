@@ -8,7 +8,8 @@ Timer Replicated::allreduce_tm_("Replicated::allreduce");
 Timer Replicated::memory_initialization_tm_(
     "Replicated::memory_initialization");
 Timer Replicated::memory_free_tm_("Replicated::memory_free");
-Timer Replicated::vector_allocation_tm_("Replicated::vector_allocation");
+Timer Replicated::host_array_allocation_tm_(
+    "Replicated::host_array_allocation");
 Timer Replicated::copy_tm_("Replicated::copy");
 Timer Replicated::host_device_transfer_tm_("Replicated::host_device_transfer");
 Timer Replicated::rescale_tm_("Replicated::rescale");
@@ -702,14 +703,14 @@ void Replicated::InvSqrt()
 
 void Replicated::consolidate()
 {
-    // Start timer for vector allocation
+    // Start timer for array allocation on host
+    host_array_allocation_tm_.start();
 
-    vector_allocation_tm_.start();
-    std::vector<double> hC(dim_ * dim_, 0.0);
-    std::vector<double> hCsum(dim_ * dim_, 0.0);
+    double* hC    = new double[dim_ * dim_];
+    double* hCsum = new double[dim_ * dim_];
 
-    // Stop timer for vector allocation
-    vector_allocation_tm_.stop();
+    // Stop timer for vector allocation on host
+    host_array_allocation_tm_.stop();
 
     size_t ld = magma_roundup(dim_, 32);
 
@@ -731,7 +732,7 @@ void Replicated::consolidate()
     allreduce_tm_.start();
 
     // replicated matrix data is sum of all partial matrices
-    MPI_Allreduce(&hC[0], &hCsum[0], dim_ * dim_, MPI_DOUBLE, MPI_SUM, lacomm_);
+    MPI_Allreduce(hC, hCsum, dim_ * dim_, MPI_DOUBLE, MPI_SUM, lacomm_);
 
     // Stop timer to measure time spent in MPI_Allreduce
     allreduce_tm_.stop();
@@ -739,7 +740,7 @@ void Replicated::consolidate()
     // Start timer for host-device transfer
     host_device_transfer_tm_.start();
 
-    magma_dsetmatrix(dim_, dim_, &hCsum[0], dim_, device_data_, ld, queue);
+    magma_dsetmatrix(dim_, dim_, hCsum, dim_, device_data_, ld, queue);
 
     // Stop timer for host-device transfer
     host_device_transfer_tm_.stop();
@@ -753,6 +754,9 @@ void Replicated::consolidate()
         std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
         magma_dprint_gpu(dim_, dim_, device_data_, ld, queue);
     }
+
+    delete[] hC;
+    delete[] hCsum;
 
     magma_queue_destroy(queue);
 }
