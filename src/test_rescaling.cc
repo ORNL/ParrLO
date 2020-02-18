@@ -17,6 +17,11 @@ int main(int argc, char** argv)
 {
 
     int i = MPI_Init(&argc, &argv);
+    if (i != MPI_SUCCESS)
+    {
+        std::cout << "MPI ERROR" << i << std::endl;
+        return 1;
+    }
 
     MPI_Comm lacomm;
 

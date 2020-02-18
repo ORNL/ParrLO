@@ -76,7 +76,7 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
 
 Replicated::Replicated(
     double* partial, size_t dim, MPI_Comm comm, int verbosity)
-    : lacomm_(comm), dim_(dim), device_data_(partial), verbosity_(verbosity)
+    : dim_(dim), lacomm_(comm), device_data_(partial), verbosity_(verbosity)
 {
     data_initialized_ = true;
     own_data_         = false;
