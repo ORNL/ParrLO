@@ -2,7 +2,7 @@
 source ../scripts/modules.summit
 
 cmake -DBUILD_FOR_GPU=ON \
-      -DMPIEXEC_EXECUTABLE="/sw/summit/xalt/1.1.4/bin/jsrun" \
+      -DMPIEXEC_EXECUTABLE="/sw/summit/xalt/1.2.0/bin/jsrun" \
       -DMPIEXEC_NUMPROCS_FLAG="-n" \
       -DMPIEXEC_PREFLAGS="-a1;-c7;-bpacked:2;-g1" \
       ..
