@@ -357,9 +357,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 
     unsigned int count_iter = 0;
 
-    double* dwork;
-    magma_dmalloc(&dwork, lddc);
-
     // Implementation of Schulz iteration
 
     double* dI;
@@ -455,7 +452,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_free(dZaux);
     magma_free(dZY);
     magma_free(dIntermediate);
-    magma_free(dwork);
     magma_queue_destroy(queue);
 
     // Stop timer for memory free
@@ -478,9 +474,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_queue_create(device, &queue);
 
     unsigned int count_iter = 0;
-
-    double* dwork;
-    magma_dmalloc(&dwork, lddc);
 
     // Implementation of Schulz iteration
 
@@ -554,7 +547,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_free(dY);
     magma_free(dZaux);
     magma_free(dZY);
-    magma_free(dwork);
     magma_queue_destroy(queue);
 
     // Stop timer for memory free
