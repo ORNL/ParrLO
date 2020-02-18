@@ -76,7 +76,7 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
 
 Replicated::Replicated(
     double* partial, size_t dim, MPI_Comm comm, int verbosity)
-    : lacomm_(comm), dim_(dim), device_data_(partial), verbosity_(verbosity)
+    : dim_(dim), lacomm_(comm), device_data_(partial), verbosity_(verbosity)
 {
     data_initialized_ = true;
     own_data_         = false;
@@ -357,14 +357,11 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 
     unsigned int count_iter = 0;
 
-    double* dwork;
-    magma_dmalloc(&dwork, lddc);
-
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dY, *dYaux, *dYtemp;
-    double *dZ, *dZaux, *dZtemp;
+    double *dY, *dYaux;
+    double *dZ, *dZaux;
     double* dZY;
     double* dIntermediate;
 
@@ -418,17 +415,17 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
-        dYtemp = dY;
-        dY     = dYaux;
-        dYaux  = dYtemp;
+        double* dYtemp = dY;
+        dY             = dYaux;
+        dYaux          = dYtemp;
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
-        dZtemp = dZ;
-        dZ     = dZaux;
-        dZaux  = dZtemp;
+        double* dZtemp = dZ;
+        dZ             = dZaux;
+        dZaux          = dZtemp;
 
         count_iter++;
     }
@@ -455,7 +452,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_free(dZaux);
     magma_free(dZY);
     magma_free(dIntermediate);
-    magma_free(dwork);
     magma_queue_destroy(queue);
 
     // Stop timer for memory free
@@ -479,13 +475,10 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 
     unsigned int count_iter = 0;
 
-    double* dwork;
-    magma_dmalloc(&dwork, lddc);
-
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dZ, *dY, *dZaux, *dZtemp;
+    double *dZ, *dY, *dZaux;
     double* dZY;
 
     // Start timer for memory initialization
@@ -527,9 +520,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
-        dZtemp = dZ;
-        dZ     = dZaux;
-        dZaux  = dZtemp;
+        double* dZtemp = dZ;
+        dZ             = dZaux;
+        dZaux          = dZtemp;
 
         count_iter++;
     }
@@ -554,7 +547,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_free(dY);
     magma_free(dZaux);
     magma_free(dZY);
-    magma_free(dwork);
     magma_queue_destroy(queue);
 
     // Stop timer for memory free

@@ -299,15 +299,13 @@ void Matrix::gaussianColumnsInitialize(double standard_deviation)
 void Matrix::hatColumnsInitialize(double support_length_ratio)
 {
     assert(!host_data_initialized_);
-    assert(support_length_ratio > 0.0 & support_length_ratio < 1.0);
+    assert((support_length_ratio > 0.0) & (support_length_ratio < 1.0));
 
     for (size_t j = 0; j < n_cols_; ++j)
     {
         int hat_center = int(j) * int(int(n_rows_) / int(n_cols_));
         int beginning_support
             = hat_center - int(support_length_ratio * double(n_rows_));
-        int end_support
-            = hat_center + int(support_length_ratio * double(n_rows_));
         for (size_t i = 0; i < n_rows_local_; ++i)
         {
             size_t global_index = global_row_id_[i];
