@@ -360,8 +360,8 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dY, *dYaux, *dYtemp;
-    double *dZ, *dZaux, *dZtemp;
+    double *dY, *dYaux;
+    double *dZ, *dZaux;
     double* dZY;
     double* dIntermediate;
 
@@ -415,7 +415,7 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
-        dYtemp = dY;
+        double* dYtemp = dY;
         dY     = dYaux;
         dYaux  = dYtemp;
 
@@ -423,7 +423,7 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
-        dZtemp = dZ;
+        double* dZtemp = dZ;
         dZ     = dZaux;
         dZaux  = dZtemp;
 
@@ -478,7 +478,7 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     // Implementation of Schulz iteration
 
     double* dI;
-    double *dZ, *dY, *dZaux, *dZtemp;
+    double *dZ, *dY, *dZaux;
     double* dZY;
 
     // Start timer for memory initialization
@@ -520,7 +520,7 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
-        dZtemp = dZ;
+        double* dZtemp = dZ;
         dZ     = dZaux;
         dZaux  = dZtemp;
 
