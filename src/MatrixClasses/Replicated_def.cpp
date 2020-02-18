@@ -416,16 +416,16 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
             dIntermediate, lddc, dZ, lddc, beta, dZaux, lddc, queue);
 
         double* dYtemp = dY;
-        dY     = dYaux;
-        dYaux  = dYtemp;
+        dY             = dYaux;
+        dYaux          = dYtemp;
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
         double* dZtemp = dZ;
-        dZ     = dZaux;
-        dZaux  = dZtemp;
+        dZ             = dZaux;
+        dZaux          = dZtemp;
 
         count_iter++;
     }
@@ -521,8 +521,8 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
 
         double* dZtemp = dZ;
-        dZ     = dZaux;
-        dZaux  = dZtemp;
+        dZ             = dZaux;
+        dZaux          = dZtemp;
 
         count_iter++;
     }
