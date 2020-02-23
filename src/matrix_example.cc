@@ -24,6 +24,13 @@ namespace po = boost::program_options;
 // ncols=4
 // [Rescaling]
 // rescaling=0.01
+// [DiagonalRescaling]
+// rescaling=true
+//          =false
+// [Orthogonalization]
+// method_type=direct_method
+//            =iterative_method_single
+//            =iterative_method_couple
 // [Schulz_iteration]
 // max_iterations=100
 // tolerance=1e-4
@@ -51,6 +58,8 @@ int main(int argc, char** argv)
 
         std::vector<int> idata;
         double irescaling;
+        bool idiagonal_rescaling;
+        std::string iortho_type;
         int imax_iterations;
         double itolerance;
 
@@ -72,6 +81,11 @@ int main(int argc, char** argv)
                 po::value<int>()->required(), "number of matrix columns")(
                 "Rescaling.rescaling", po::value<double>()->required(),
                 "rescaling for perturbation from orthogonality")(
+                "DiagonalRescaling.rescaling", po::value<bool>()->required(),
+                "rescaling for Schulz iteration")(
+                "Orthogonalization.method_type",
+                po::value<std::string>()->required(),
+                "maximum number of iterations allowed for Schulz algorithm")(
                 "Schulz_iteration.max_iterations", po::value<int>()->required(),
                 "maximum number of iterations allowed for Schulz algorithm")(
                 "Schulz_iteration.tolerance", po::value<double>()->required(),
@@ -109,7 +123,9 @@ int main(int argc, char** argv)
             // to bcast to other MPI tasks
             idata.push_back(vm["Matrix.nrows"].as<int>());
             idata.push_back(vm["Matrix.ncols"].as<int>());
-            irescaling      = vm["Rescaling.rescaling"].as<double>();
+            irescaling          = vm["Rescaling.rescaling"].as<double>();
+            idiagonal_rescaling = vm["DiagonalRescaling.rescaling"].as<bool>();
+            iortho_type = vm["Orthogonalization.method_type"].as<std::string>();
             imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
             itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
         }
@@ -121,6 +137,12 @@ int main(int argc, char** argv)
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, lacomm);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, lacomm);
+        MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, lacomm);
+        int string_length = iortho_type.length();
+        char iortho_type_c[string_length + 1];
+        strcpy(iortho_type_c, iortho_type.c_str());
+        if (comm_rank != 0) iortho_type = iortho_type_c;
+        MPI_Bcast(iortho_type_c, iortho_type.length(), MPI::CHAR, 0, lacomm);
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, lacomm);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, lacomm);
 
@@ -161,7 +183,8 @@ int main(int argc, char** argv)
         Timer orthogonalization_timer(name_ortho);
 
         orthogonalization_timer.start();
-        A.orthogonalize_iterative_method(imax_iterations, itolerance);
+        A.orthogonalize(
+            iortho_type, idiagonal_rescaling, imax_iterations, itolerance);
         orthogonalization_timer.stop();
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;

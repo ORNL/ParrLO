@@ -115,8 +115,12 @@ public:
     // Sum of matrices
     void matrixSum(Matrix&);
 
+    // Routine wrapper for orthogonalization
+    void orthogonalize(std::string, bool, unsigned int, double);
+
     // Routine for orthogonalization using Schulz iteration
-    void orthogonalize_iterative_method(unsigned int, double);
+    void orthogonalize_iterative_method(
+        std::string, bool, unsigned int, double);
 
     // Routine for orthogonalization using the diagonalization of a matrix
     void orthogonalize_direct_method();

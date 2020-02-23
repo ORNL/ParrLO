@@ -21,6 +21,15 @@ Timer Replicated::single_schulz_iteration_tm_(
 
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 {
+    magma_queue_t queue;
+    int device;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+
+    magma_queue_t queue2;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue2);
+
     double normA = 0.0;
     double normC = 0.0;
 
@@ -32,11 +41,6 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     double* C;
     magma_dmalloc(&C, lddc * m);
 
-    magma_queue_t queue;
-    int device;
-    magma_getdevice(&device);
-    magma_queue_create(device, &queue);
-
     magma_norm_t inf_norm = MagmaInfNorm;
     double* dwork;
     magma_dmalloc(&dwork, lddc);
@@ -45,15 +49,16 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     normA = magmablas_dlange(inf_norm, n, m, A, lddc, dwork, lddc, queue);
 
     // Compute C = A-B
-    magma_dcopymatrix(n, m, B, lddc, C, lddc, queue);
-    magmablas_dgeadd2(n, m, 1.0, A, lddc, -1.0, C, lddc, queue);
+    magma_dcopymatrix(n, m, B, lddc, C, lddc, queue2);
+    magmablas_dgeadd2(n, m, 1.0, A, lddc, -1.0, C, lddc, queue2);
 
     // Compute norm of C = A-B
-    normC = magmablas_dlange(inf_norm, n, m, C, lddc, dwork, lddc, queue);
+    normC = magmablas_dlange(inf_norm, n, m, C, lddc, dwork, lddc, queue2);
 
     magma_free(C);
     magma_free(dwork);
     magma_queue_destroy(queue);
+    magma_queue_destroy(queue2);
 #endif
 
     return normC / normA;
@@ -350,6 +355,8 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     size_t lddc        = magma_roundup(dim_, 32);
 
 #ifdef USE_MAGMA
+
+    // Define queue to perform linear algebra operations
     magma_queue_t queue;
     int device;
     magma_getdevice(&device);
@@ -439,6 +446,9 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
 
+    // Delete queue used for linear algebra operations and relative discrepancy
+    magma_queue_destroy(queue);
+
     // Stop timer for memory copy
     copy_tm_.stop();
 
@@ -452,7 +462,6 @@ void Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     magma_free(dZaux);
     magma_free(dZY);
     magma_free(dIntermediate);
-    magma_queue_destroy(queue);
 
     // Stop timer for memory free
     memory_free_tm_.stop();
@@ -468,6 +477,8 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     size_t lddc        = magma_roundup(dim_, 32);
 
 #ifdef USE_MAGMA
+
+    // Define queue to perform linear algebra operations
     magma_queue_t queue;
     int device;
     magma_getdevice(&device);
@@ -536,6 +547,9 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     // Overwrite aTa with the inverse square root
     magma_dcopymatrix(dim_, dim_, dZ, lddc, device_data_, lddc, queue);
 
+    // Delete queue used for linear algebra operations
+    magma_queue_destroy(queue);
+
     // Stop timer for copy
     copy_tm_.stop();
 
@@ -547,7 +561,6 @@ void Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     magma_free(dY);
     magma_free(dZaux);
     magma_free(dZY);
-    magma_queue_destroy(queue);
 
     // Stop timer for memory free
     memory_free_tm_.stop();
