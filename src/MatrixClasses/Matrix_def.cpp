@@ -492,7 +492,20 @@ void Matrix::computeAtA()
 #endif
 }
 
-void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
+void Matrix::orthogonalize(std::string method = "direct_method",
+    bool diagonal_rescaling = false, unsigned int max_iter = 10,
+    double tol = 1e-4)
+{
+
+    if (method == "direct_method")
+        orthogonalize_direct_method();
+    else
+        orthogonalize_iterative_method(
+            method, diagonal_rescaling, max_iter, tol);
+}
+
+void Matrix::orthogonalize_iterative_method(std::string method,
+    bool diagonal_rescaling, unsigned int max_iter, double tol)
 {
     // compute local contributions to Gram matrix
     computeAtA();
@@ -514,10 +527,12 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 
     Replicated AtA(replicated_S_, n_cols_, lacomm_);
 
-    if (apply_rescaling_) AtA.preRescale();
-    // AtA.SchulzCoupled(max_iter, tol);
-    AtA.SchulzStabilizedSingle(max_iter, tol);
-    if (apply_rescaling_) AtA.postRescale();
+    if (apply_rescaling_ || diagonal_rescaling) AtA.preRescale();
+    if (method == "iterative_method_single")
+        AtA.SchulzStabilizedSingle(max_iter, tol);
+    else
+        AtA.SchulzCoupled(max_iter, tol);
+    if (apply_rescaling_ || diagonal_rescaling) AtA.postRescale();
 
     // Restore orthogonality on columns of A
     double* dAortho;
@@ -538,6 +553,8 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
         alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
         queue);
 
+    magma_queue_destroy(queue);
+
     // Stop timer for matrix-matrix multiply
     matrix_matrix_multiply_tm_.stop();
 
@@ -554,8 +571,6 @@ void Matrix::orthogonalize_iterative_method(unsigned int max_iter, double tol)
 
     // Stop free timer
     free_tm_.stop();
-
-    magma_queue_destroy(queue);
 
 #endif
 }
@@ -592,6 +607,8 @@ void Matrix::orthogonalize_direct_method()
         alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
         queue);
 
+    magma_queue_destroy(queue);
+
     // Store re-orthogonalized matrix
     magma_dcopymatrix(
         n_rows_local_, n_cols_, dAortho, ldda, device_data_, ldda, queue);
@@ -601,8 +618,6 @@ void Matrix::orthogonalize_direct_method()
 
     // Free gpu memory
     magma_free(dAortho);
-
-    magma_queue_destroy(queue);
 
 #endif
 }
