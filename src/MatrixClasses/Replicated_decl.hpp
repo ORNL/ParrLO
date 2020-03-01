@@ -18,7 +18,8 @@ class Replicated
 private:
     size_t dim_      = 0; // dimension of replicated Matrix
     MPI_Comm lacomm_ = NULL;
-    double* device_data_; // pointer to basic data structure
+    double** device_data_; // pointer to basic data structure
+    double* auxiliary_device_data_;
     std::vector<double> diagonal_;
 
     // flag to specify is object is responsible for releasing memory
@@ -55,7 +56,7 @@ public:
     Replicated(const Replicated& mat);
 
     // Build matrix with local (partial) contributions to matrix elements
-    Replicated(double*, size_t, MPI_Comm, int verbosity = 0);
+    Replicated(double**, size_t, MPI_Comm, int verbosity = 0);
 
     ~Replicated();
 
@@ -97,10 +98,12 @@ public:
     void postRescale();
 
     // Coupled Schulz iteraion
-    void SchulzCoupled(unsigned int max_iter, double tol);
+    int SchulzCoupled(unsigned int max_iter, double tol);
 
     // Stabilized single Schulz iteraion
-    void SchulzStabilizedSingle(unsigned int max_iter, double tol);
+    int SchulzStabilizedSingle(unsigned int max_iter, double tol);
+
+    // Inverse square root computed with diagonalization
     void InvSqrt();
 
     static void printTimers(std::ostream& os)

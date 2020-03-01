@@ -34,7 +34,6 @@ private:
     static Timer matrix_matrix_multiply_tm_;
     static Timer allocate_tm_;
     static Timer free_tm_;
-    static Timer copy_tm_;
 
     // Boolean variables
     bool host_data_initialized_   = false;
@@ -116,11 +115,10 @@ public:
     void matrixSum(Matrix&);
 
     // Routine wrapper for orthogonalization
-    void orthogonalize(std::string, bool, unsigned int, double);
+    int orthogonalize(std::string, bool, unsigned int, double);
 
     // Routine for orthogonalization using Schulz iteration
-    void orthogonalize_iterative_method(
-        std::string, bool, unsigned int, double);
+    int orthogonalize_iterative_method(std::string, bool, unsigned int, double);
 
     // Routine for orthogonalization using the diagonalization of a matrix
     void orthogonalize_direct_method();
@@ -135,7 +133,6 @@ public:
         matrix_matrix_multiply_tm_.print(os);
         allocate_tm_.print(os);
         free_tm_.print(os);
-        copy_tm_.print(os);
     }
 
     // FRIEND methods

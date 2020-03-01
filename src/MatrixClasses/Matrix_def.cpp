@@ -6,7 +6,6 @@
 
 Timer Matrix::compute_aTa_tm_("Matrix::compute_aTa");
 Timer Matrix::matrix_matrix_multiply_tm_("Matrix::matrix_matrix_multiply");
-Timer Matrix::copy_tm_("Matrix::copy");
 Timer Matrix::allocate_tm_("Matrix::allocate");
 Timer Matrix::free_tm_("Matrix::free");
 
@@ -492,26 +491,31 @@ void Matrix::computeAtA()
 #endif
 }
 
-void Matrix::orthogonalize(std::string method = "direct_method",
+int Matrix::orthogonalize(std::string method = "direct_method",
     bool diagonal_rescaling = false, unsigned int max_iter = 10,
     double tol = 1e-4)
 {
 
+    int count_iter = 0;
+
     if (method == "direct_method")
         orthogonalize_direct_method();
     else
-        orthogonalize_iterative_method(
+        count_iter = orthogonalize_iterative_method(
             method, diagonal_rescaling, max_iter, tol);
+
+    return count_iter;
 }
 
-void Matrix::orthogonalize_iterative_method(std::string method,
+int Matrix::orthogonalize_iterative_method(std::string method,
     bool diagonal_rescaling, unsigned int max_iter, double tol)
 {
     // compute local contributions to Gram matrix
     computeAtA();
 
-    double alpha = 1.0;
-    double beta  = 0.0;
+    double alpha   = 1.0;
+    double beta    = 0.0;
+    int count_iter = 0;
 
 #ifdef USE_MAGMA
 
@@ -525,13 +529,13 @@ void Matrix::orthogonalize_iterative_method(std::string method,
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    Replicated AtA(replicated_S_, n_cols_, lacomm_);
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
 
     if (apply_rescaling_ || diagonal_rescaling) AtA.preRescale();
     if (method == "iterative_method_single")
-        AtA.SchulzStabilizedSingle(max_iter, tol);
+        count_iter = AtA.SchulzStabilizedSingle(max_iter, tol);
     else
-        AtA.SchulzCoupled(max_iter, tol);
+        count_iter = AtA.SchulzCoupled(max_iter, tol);
     if (apply_rescaling_ || diagonal_rescaling) AtA.postRescale();
 
     // Restore orthogonality on columns of A
@@ -573,6 +577,8 @@ void Matrix::orthogonalize_iterative_method(std::string method,
     free_tm_.stop();
 
 #endif
+
+    return count_iter;
 }
 
 void Matrix::orthogonalize_direct_method()
@@ -595,7 +601,7 @@ void Matrix::orthogonalize_direct_method()
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    Replicated AtA(replicated_S_, n_cols_, lacomm_);
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
     if (apply_rescaling_) AtA.preRescale();
     AtA.InvSqrt();
     if (apply_rescaling_) AtA.postRescale();
