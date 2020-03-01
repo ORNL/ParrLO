@@ -142,7 +142,7 @@ int main(int argc, char** argv)
         char iortho_type_c[string_length + 1];
         strcpy(iortho_type_c, iortho_type.c_str());
         if (comm_rank != 0) iortho_type = iortho_type_c;
-        MPI_Bcast(iortho_type_c, iortho_type.length(), MPI::CHAR, 0, lacomm);
+        MPI_Bcast(iortho_type_c, iortho_type.length(), MPI_CHAR, 0, lacomm);
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, lacomm);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, lacomm);
 

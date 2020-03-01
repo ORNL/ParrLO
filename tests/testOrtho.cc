@@ -65,7 +65,8 @@ int main(int argc, char** argv)
         // re-orthogonalizing
         dfo_before = A.orthogonalityCheck();
 
-        A.orthogonalize("iterative_method_single", false, 10, 1.e-4);
+        int count_iter
+            = A.orthogonalize("iterative_method_single", false, 10, 1.e-4);
 
         dfo_after = A.orthogonalityCheck();
 
@@ -76,7 +77,8 @@ int main(int argc, char** argv)
                     << "Orthogonalized A with dfo before orthogonalizing: "
                     << dfo_before
                     << " and dfo after orthogonalizing: " << dfo_after
-                    << std::endl;
+                    << std::endl
+                    << " took " << count_iter << " to converge " << std::endl;
             A.printMatrix();
 
             // Print timers for operations performed on Replicated matrix

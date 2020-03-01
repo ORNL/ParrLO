@@ -63,12 +63,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    B.SchulzStabilizedSingle(20, 1.e-6);
+    int count_iter = B.SchulzStabilizedSingle(20, 1.e-6);
 
     B.add(-1., C);
 
     const double normdiff = B.maxNorm();
     std::cout << "Norm Difference: " << normdiff << std::endl;
+    std::cout << "Iterations for Schulz iteration to converge: " << count_iter
+              << std::endl;
     if (std::isnan(normdiff))
     {
         std::cout << "Difference is NaN!!!" << std::endl;
