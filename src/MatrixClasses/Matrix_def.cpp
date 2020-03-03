@@ -8,6 +8,7 @@ Timer Matrix::compute_aTa_tm_("Matrix::compute_aTa");
 Timer Matrix::matrix_matrix_multiply_tm_("Matrix::matrix_matrix_multiply");
 Timer Matrix::allocate_tm_("Matrix::allocate");
 Timer Matrix::free_tm_("Matrix::free");
+Timer Matrix::ortho_tm_("Matrix::ortho");
 
 Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
     : n_rows_(n), n_cols_(m), lacomm_(comm)
@@ -495,6 +496,7 @@ int Matrix::orthogonalize(std::string method = "direct_method",
     bool diagonal_rescaling = false, unsigned int max_iter = 10,
     double tol = 1e-4)
 {
+    ortho_tm_.start();
 
     int count_iter = 0;
 
@@ -503,6 +505,8 @@ int Matrix::orthogonalize(std::string method = "direct_method",
     else
         count_iter = orthogonalize_iterative_method(
             method, diagonal_rescaling, max_iter, tol);
+
+    ortho_tm_.stop();
 
     return count_iter;
 }

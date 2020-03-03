@@ -34,6 +34,7 @@ private:
     static Timer matrix_matrix_multiply_tm_;
     static Timer allocate_tm_;
     static Timer free_tm_;
+    static Timer ortho_tm_;
 
     // Boolean variables
     bool host_data_initialized_   = false;
@@ -133,6 +134,7 @@ public:
         matrix_matrix_multiply_tm_.print(os);
         allocate_tm_.print(os);
         free_tm_.print(os);
+        ortho_tm_.print(os);
     }
 
     // FRIEND methods

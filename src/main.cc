@@ -42,19 +42,14 @@ int main(int argc, char** argv)
 
     if (i != MPI_SUCCESS)
     {
+        std::cerr << "MPI_Init failed!" << std::endl;
+        return 1;
     }
     else
     {
-
-        MPI_Comm lacomm;
-
-        MPI_Comm_dup(MPI_COMM_WORLD, &lacomm);
-
-        // std::cout << "MPI SUCCESS" << i << std::endl;
-
         int comm_rank, comm_size;
-        MPI_Comm_rank(lacomm, &comm_rank);
-        MPI_Comm_size(lacomm, &comm_size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
         std::vector<int> idata;
         double irescaling;
@@ -132,30 +127,27 @@ int main(int argc, char** argv)
 
         // broadcast input parameters to all MPI tasks
         int nidata = idata.size();
-        MPI_Bcast(&nidata, 1, MPI_INT, 0, lacomm);
+        MPI_Bcast(&nidata, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         if (comm_rank != 0) idata.resize(nidata);
-        MPI_Bcast(idata.data(), nidata, MPI_INT, 0, lacomm);
-        MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, lacomm);
-        MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, lacomm);
+        MPI_Bcast(idata.data(), nidata, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
         int string_length = iortho_type.length();
         char iortho_type_c[string_length + 1];
         strcpy(iortho_type_c, iortho_type.c_str());
         if (comm_rank != 0) iortho_type = iortho_type_c;
-        MPI_Bcast(iortho_type_c, iortho_type.length(), MPI_CHAR, 0, lacomm);
-        MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, lacomm);
-        MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, lacomm);
+        MPI_Bcast(
+            iortho_type_c, iortho_type.length(), MPI_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        std::string name = "matrix_example";
-        Timer matrix_time(name);
+        Timer matrix_time("matrix_ortho");
         matrix_time.start();
 
 #ifdef USE_MAGMA
         magma_init();
-#else
-
 #endif
-        // matrix_time.start();
 
         int nrows = idata[0];
         int ncols = idata[1];
@@ -164,7 +156,7 @@ int main(int argc, char** argv)
             std::cout << "Matrix size: " << nrows << "x" << ncols << std::endl;
         }
 
-        Matrix A(nrows, ncols, lacomm);
+        Matrix A(nrows, ncols, MPI_COMM_WORLD);
 
         A.gaussianColumnsInitialize(0.8);
         // A.activateRescaling();
@@ -179,15 +171,14 @@ int main(int argc, char** argv)
                 << "Departure from orthogonality before re-orthogonalizing: "
                 << departure_from_orthogonality << std::endl;
 
-        std::string name_ortho = "orthogonalization";
-        Timer orthogonalization_timer(name_ortho);
-
-        orthogonalization_timer.start();
-        A.orthogonalize(
+        int count_iter = A.orthogonalize(
             iortho_type, idiagonal_rescaling, imax_iterations, itolerance);
-        orthogonalization_timer.stop();
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
+        if (comm_rank == 0 && count_iter > 0)
+            std::cout << "Iterative solve took " << count_iter << " iterations"
+                      << std::endl;
+
         // A.printMatrix();
 
         if (comm_rank == 0) std::cout << "Orthogonality check A" << std::endl;
@@ -201,20 +192,16 @@ int main(int argc, char** argv)
                 << "Departure from orthogonality after re-orthogonalizing: "
                 << departure_from_orthogonality << std::endl;
 
-        MPI_Comm_free(&lacomm);
-
         matrix_time.stop();
 
         matrix_time.print(std::cout);
-        orthogonalization_timer.print(std::cout);
 
         Replicated::printTimers(std::cout);
         Matrix::printTimers(std::cout);
     }
+
 #ifdef USE_MAGMA
     magma_finalize();
-#else
-
 #endif
 
     MPI_Finalize();
