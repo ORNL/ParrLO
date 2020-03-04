@@ -127,18 +127,32 @@ int main(int argc, char** argv)
 
         // broadcast input parameters to all MPI tasks
         int nidata = idata.size();
-        MPI_Bcast(&nidata, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        int ret    = MPI_Bcast(&nidata, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (ret != MPI_SUCCESS) std::cerr << "MPI_Bcast error!" << std::endl;
 
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
         int string_length = iortho_type.length();
-        char iortho_type_c[string_length + 1];
-        strcpy(iortho_type_c, iortho_type.c_str());
-        if (comm_rank != 0) iortho_type = iortho_type_c;
-        MPI_Bcast(
-            iortho_type_c, iortho_type.length(), MPI_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        // bcast "iortho_type"
+        {
+            std::vector<char> iortho_type_v(string_length + 1);
+            if (comm_rank == 0)
+                strcpy(iortho_type_v.data(), iortho_type.c_str());
+            ret = MPI_Bcast(iortho_type_v.data(), iortho_type_v.size(),
+                MPI_CHAR, 0, MPI_COMM_WORLD);
+            if (ret != MPI_SUCCESS)
+                std::cerr << "iortho_type_v: MPI_Bcast error!" << std::endl;
+            else
+            {
+                std::string new_iortho_type(iortho_type_v.data());
+                iortho_type = new_iortho_type;
+            }
+        }
+
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
