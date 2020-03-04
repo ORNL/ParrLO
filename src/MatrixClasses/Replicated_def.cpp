@@ -373,7 +373,6 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     double *dZ, *dZaux;
     double* dZY;
     double* dIntermediate;
-    double* dSwap;
 
     // Start timer for memory initialization
     memory_initialization_tm_.start();
@@ -488,7 +487,6 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     double* dI;
     double *dZ, *dY, *dZaux;
     double* dZY;
-    double* dSwap;
 
     // Start timer for memory initialization
     memory_initialization_tm_.start();
