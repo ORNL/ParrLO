@@ -6,3 +6,4 @@ module load cmake
 module load cuda/8.0
 module load magma/2.4.0
 module load boost
+module load python

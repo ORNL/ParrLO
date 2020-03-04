@@ -9,3 +9,4 @@ module load cuda
 module load boost
 module load magma
 module load netlib-lapack
+module load python/3
