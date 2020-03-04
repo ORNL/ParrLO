@@ -1,3 +1,5 @@
+find_package(PythonInterp 3.2 REQUIRED)
+
 set(SOURCES_TESTMPI ${CMAKE_SOURCE_DIR}/tests/testMPI.cc)
 set(SOURCES_TESTMAGMA ${CMAKE_SOURCE_DIR}/tests/testMAGMA.cc)
 set(SOURCES_TESTMAXNORM ${CMAKE_SOURCE_DIR}/tests/testMaxNormReplicated.cc
@@ -10,10 +12,6 @@ set(SOURCES_TESTSCHULZSINGLE ${CMAKE_SOURCE_DIR}/tests/testSchulzSingle.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
 set(SOURCES_TESTORTHO ${CMAKE_SOURCE_DIR}/tests/testOrtho.cc
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
-                        ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
-set(SOURCES_TESTORTHO_GAUSSIAN ${CMAKE_SOURCE_DIR}/tests/testOrthoGaussian.cc
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
                         ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
@@ -52,8 +50,6 @@ set(MAIN_TESTSCHULZSINGLE testSchulzSingle)
 add_executable(${MAIN_TESTSCHULZSINGLE} ${SOURCES_TESTSCHULZSINGLE})
 set(MAIN_TESTORTHO testOrtho)
 add_executable(${MAIN_TESTORTHO} ${SOURCES_TESTORTHO})
-set(MAIN_TESTORTHO_GAUSSIAN testOrthoGaussian)
-add_executable(${MAIN_TESTORTHO_GAUSSIAN} ${SOURCES_TESTORTHO_GAUSSIAN})
 set(MAIN_TESTORTHO_HAT testOrthoHatFunction)
 add_executable(${MAIN_TESTORTHO_HAT} ${SOURCES_TESTORTHO_HAT})
 set(MAIN_TESTORTHO_RESCALE testOrthoRescale)
@@ -121,10 +117,6 @@ add_test(NAME testOrtho
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testOrtho)
 
-add_test(NAME testOrthoGaussian
-         COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
-         ${CMAKE_CURRENT_BINARY_DIR}/testOrthoGaussian)
-
 add_test(NAME testOrthoHatFunction
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testOrthoHatFunction)
@@ -140,3 +132,9 @@ add_test(NAME testOrthoGaussianRescale
 add_test(NAME testOrthoHatFunctionRescale
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS}
          ${CMAKE_CURRENT_BINARY_DIR}/testOrthoHatFunctionRescale)
+
+add_test(NAME testOrthoGaussian
+         COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/testOrthoGaussian.py
+         ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+         ${CMAKE_CURRENT_BINARY_DIR}/../src/main
+         ${CMAKE_CURRENT_SOURCE_DIR}/testOrthoGaussian.cfg)
