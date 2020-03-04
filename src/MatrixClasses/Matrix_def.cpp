@@ -492,9 +492,8 @@ void Matrix::computeAtA()
 #endif
 }
 
-int Matrix::orthogonalize(std::string method = "direct_method",
-    bool diagonal_rescaling = false, unsigned int max_iter = 10,
-    double tol = 1e-4)
+int Matrix::orthogonalize(std::string method, bool diagonal_rescaling = false,
+    unsigned int max_iter = 10, double tol = 1e-4)
 {
     ortho_tm_.start();
 
@@ -502,9 +501,15 @@ int Matrix::orthogonalize(std::string method = "direct_method",
 
     if (method == "direct_method")
         orthogonalize_direct_method();
-    else
+    else if (method == "iterative_method_single"
+             || method == "iterative_method_coupled")
         count_iter = orthogonalize_iterative_method(
             method, diagonal_rescaling, max_iter, tol);
+    else
+    {
+        std::cerr << "Need to specify orthogonalization method!!!" << std::endl;
+        count_iter = -1;
+    }
 
     ortho_tm_.stop();
 
