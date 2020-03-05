@@ -269,16 +269,30 @@ void Matrix::randomInitialize()
     this->transferDataCPUtoGPU();
 }
 
-void Matrix::gaussianColumnsInitialize(double standard_deviation)
+void Matrix::gaussianColumnsInitialize(
+    double standard_deviation, double center_displacement)
 {
     assert(!host_data_initialized_);
     assert(standard_deviation > 0.0);
+    assert((center_displacement >= 0.0) & (center_displacement <= 1.0));
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(-1, +1);
 
     double scaling_factor = 1. / (std::sqrt(2 * M_PI) * standard_deviation);
+    int row_center_displacement
+        = static_cast<int>((static_cast<double>(n_rows_) / n_cols_)
+                           * center_displacement * dis(gen));
 
     for (size_t j = 0; j < n_cols_; ++j)
     {
-        size_t gaussian_center = j * size_t(n_rows_ / n_cols_);
+        int gaussian_center = int(j) * int(n_rows_ / n_cols_);
+
+        if ((gaussian_center + row_center_displacement > 0)
+            & (gaussian_center + row_center_displacement < n_rows_))
+            gaussian_center = gaussian_center + row_center_displacement;
+
         for (size_t i = 0; i < n_rows_local_; ++i)
         {
             size_t global_index = global_row_id_[i];
@@ -296,14 +310,29 @@ void Matrix::gaussianColumnsInitialize(double standard_deviation)
     this->transferDataCPUtoGPU();
 }
 
-void Matrix::hatColumnsInitialize(double support_length_ratio)
+void Matrix::hatColumnsInitialize(
+    double support_length_ratio, double center_displacement)
 {
     assert(!host_data_initialized_);
     assert((support_length_ratio > 0.0) & (support_length_ratio < 1.0));
+    assert((center_displacement >= 0.0) & (center_displacement <= 1.0));
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(-1, +1);
+
+    int row_center_displacement
+        = static_cast<int>((static_cast<double>(n_rows_) / n_cols_)
+                           * center_displacement * dis(gen));
 
     for (size_t j = 0; j < n_cols_; ++j)
     {
         int hat_center = int(j) * int(int(n_rows_) / int(n_cols_));
+
+        if ((hat_center + row_center_displacement > 0)
+            & (hat_center + row_center_displacement < n_rows_))
+            hat_center = hat_center + row_center_displacement;
+
         int beginning_support
             = hat_center - int(support_length_ratio * double(n_rows_));
         for (size_t i = 0; i < n_rows_local_; ++i)
@@ -492,8 +521,8 @@ void Matrix::computeAtA()
 #endif
 }
 
-int Matrix::orthogonalize(std::string method, bool diagonal_rescaling = false,
-    unsigned int max_iter = 10, double tol = 1e-4)
+int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
+    unsigned int max_iter, double tol)
 {
     ortho_tm_.start();
 
