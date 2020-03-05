@@ -73,10 +73,12 @@ public:
     void randomInitialize();
 
     // Set columns of the matrix to Gaussian functions
-    void gaussianColumnsInitialize(double);
+    void gaussianColumnsInitialize(
+        double standard_deviation, double center_displacement = 0.0);
 
     // Set columns of the matrix to Gaussian functions
-    void hatColumnsInitialize(double);
+    void hatColumnsInitialize(
+        double support_length_ration, double center_displacement = 0.0);
 
     // Option to activate the pre and post rescaling of the Replicated matrix
     void activateRescaling();
@@ -116,7 +118,8 @@ public:
     void matrixSum(Matrix&);
 
     // Routine wrapper for orthogonalization
-    int orthogonalize(std::string, bool, unsigned int, double);
+    int orthogonalize(std::string method, bool diagonal_rescaling = false,
+        unsigned int max_iter = 10, double tol = 1e-4);
 
     // Routine for orthogonalization using Schulz iteration
     int orthogonalize_iterative_method(std::string, bool, unsigned int, double);

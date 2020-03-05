@@ -22,6 +22,8 @@ namespace po = boost::program_options;
 // [Matrix]
 // nrows=32
 // ncols=4
+// [ColumnsCenter]
+// displacement = 0.5
 // [Rescaling]
 // rescaling=0.01
 // [DiagonalRescaling]
@@ -52,6 +54,7 @@ int main(int argc, char** argv)
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
         std::vector<int> idata;
+        double iwavefunctions_center_displacement = 0.0;
         double irescaling;
         bool idiagonal_rescaling;
         std::string iortho_type;
@@ -74,6 +77,8 @@ int main(int argc, char** argv)
             config.add_options()("Matrix.nrows", po::value<int>()->required(),
                 "number of matrix rows")("Matrix.ncols",
                 po::value<int>()->required(), "number of matrix columns")(
+                "ColumnsCenter.displacement", po::value<double>()->required(),
+                "displacement ratio for the center of the wave functions")(
                 "Rescaling.rescaling", po::value<double>()->required(),
                 "rescaling for perturbation from orthogonality")(
                 "DiagonalRescaling.rescaling", po::value<bool>()->required(),
@@ -118,6 +123,8 @@ int main(int argc, char** argv)
             // to bcast to other MPI tasks
             idata.push_back(vm["Matrix.nrows"].as<int>());
             idata.push_back(vm["Matrix.ncols"].as<int>());
+            iwavefunctions_center_displacement
+                = vm["ColumnsCenter.displacement"].as<double>();
             irescaling          = vm["Rescaling.rescaling"].as<double>();
             idiagonal_rescaling = vm["DiagonalRescaling.rescaling"].as<bool>();
             iortho_type = vm["Orthogonalization.method_type"].as<std::string>();
@@ -132,6 +139,8 @@ int main(int argc, char** argv)
 
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&iwavefunctions_center_displacement, 1, MPI_DOUBLE, 0,
+            MPI_COMM_WORLD);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
         int string_length = iortho_type.length();
@@ -172,7 +181,10 @@ int main(int argc, char** argv)
 
         Matrix A(nrows, ncols, MPI_COMM_WORLD);
 
-        A.gaussianColumnsInitialize(0.8);
+        double standard_deviation = 0.8;
+
+        A.gaussianColumnsInitialize(
+            standard_deviation, iwavefunctions_center_displacement);
         // A.activateRescaling();
 
         // Perform the check on the departure from orthogonality before
