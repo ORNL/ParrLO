@@ -528,8 +528,10 @@ int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
 
     int count_iter = 0;
 
-    if (method == "direct_method")
-        orthogonalize_direct_method();
+    if (method == "direct_invsqrt")
+        orthogonalize_direct_invsqrt();
+    else if (method == "direct_cholesky")
+        orthogonalize_direct_cholesky();
     else if (method == "iterative_method_single"
              || method == "iterative_method_coupled")
         count_iter = orthogonalize_iterative_method(
@@ -619,7 +621,7 @@ int Matrix::orthogonalize_iterative_method(std::string method,
     return count_iter;
 }
 
-void Matrix::orthogonalize_direct_method()
+void Matrix::orthogonalize_direct_invsqrt()
 {
     // compute local contributions to Gram matrix
     computeAtA();
@@ -653,9 +655,9 @@ void Matrix::orthogonalize_direct_method()
 
     magma_queue_destroy(queue);
 
-    // Store re-orthogonalized matrix
-    magma_dcopymatrix(
-        n_rows_local_, n_cols_, dAortho, ldda, device_data_, ldda, queue);
+    // Pointer swapping
+    std::swap(dAortho, device_data_);
+
     // Copy dAortho to A on cpu
     // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
     // lda, queue );
@@ -663,6 +665,40 @@ void Matrix::orthogonalize_direct_method()
     // Free gpu memory
     magma_free(dAortho);
 
+#endif
+}
+
+void Matrix::orthogonalize_direct_cholesky()
+{
+    // compute local contributions to Gram matrix
+    computeAtA();
+
+    double alpha = 1.0;
+    double beta  = 0.0;
+
+#ifdef USE_MAGMA
+
+    assert(device_data_initialized_);
+
+    size_t ldda = magma_roundup(n_rows_local_, 32);
+    size_t lddc = magma_roundup(n_cols_, 32);
+
+    magma_queue_t queue;
+    int device;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
+    if (apply_rescaling_) AtA.preRescale();
+    AtA.CholeskyQR();
+    AtA.printMatrix();
+    if (apply_rescaling_) AtA.postRescale();
+
+    // Restore orthogonality on columns of A
+    magma_dtrmm(MagmaRight, MagmaLower, MagmaTrans, MagmaNonUnit, n_rows_local_,
+        n_cols_, alpha, replicated_S_, lddc, device_data_, ldda, queue);
+
+    magma_queue_destroy(queue);
 #endif
 }
 
