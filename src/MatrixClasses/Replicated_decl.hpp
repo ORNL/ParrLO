@@ -103,6 +103,9 @@ public:
     // Stabilized single Schulz iteraion
     int SchulzStabilizedSingle(unsigned int max_iter, double tol);
 
+    // Cholesky QR
+    void CholeskyQR();
+
     // Inverse square root computed with diagonalization
     void InvSqrt();
 

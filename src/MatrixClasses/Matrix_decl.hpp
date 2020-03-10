@@ -125,7 +125,10 @@ public:
     int orthogonalize_iterative_method(std::string, bool, unsigned int, double);
 
     // Routine for orthogonalization using the diagonalization of a matrix
-    void orthogonalize_direct_method();
+    void orthogonalize_direct_invsqrt();
+
+    // Routine for orthogonalization using the diagonalization of a matrix
+    void orthogonalize_direct_cholesky();
 
     // Routine to check orthogonality
     double orthogonalityCheck();

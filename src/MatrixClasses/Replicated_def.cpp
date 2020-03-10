@@ -657,6 +657,30 @@ void Replicated::diagonalize(double* evecs, std::vector<double>& evals)
     magma_queue_destroy(queue);
 }
 
+void Replicated::CholeskyQR()
+{
+    magma_queue_t queue;
+    int device;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+
+    int info;
+    size_t lddc = magma_roundup(dim_, 32);
+
+    // Compute  Cholesky factor on GPU, i.e. L
+    magma_dpotrf_gpu(MagmaLower, dim_, *device_data_, lddc, &info);
+    if (info != 0)
+        std::cerr << "magma_dpotrf_gpu failed, info = " << info << std::endl;
+
+    // Compute inverse of lower triangular Choleksy factor on GPU, i.e. L^(-1)
+    magma_dtrtri_gpu(
+        MagmaLower, MagmaNonUnit, dim_, *device_data_, lddc, &info);
+    if (info != 0)
+        std::cerr << "magma_dtrtri_gpu failed, info = " << info << std::endl;
+
+    magma_queue_destroy(queue);
+}
+
 void Replicated::InvSqrt()
 {
     double* evecs;

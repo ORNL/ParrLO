@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     Timer orthogonalization_timer(name_ortho);
 
     orthogonalization_timer.start();
-    A.orthogonalize_direct_method();
+    A.orthogonalize_direct_invsqrt();
     orthogonalization_timer.stop();
 
     A.printMatrix();
