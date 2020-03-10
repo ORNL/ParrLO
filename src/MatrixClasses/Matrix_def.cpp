@@ -277,7 +277,9 @@ void Matrix::gaussianColumnsInitialize(
     assert((center_displacement >= 0.0) & (center_displacement <= 1.0));
 
     std::random_device rd;
-    std::mt19937 gen(rd());
+    unsigned int seed1 = 0;
+    // std::mt19937 gen(rd());
+    std::mt19937 gen(seed1);
     std::uniform_real_distribution<> dis(-1, +1);
 
     double scaling_factor = 1. / (std::sqrt(2 * M_PI) * standard_deviation);
@@ -318,7 +320,9 @@ void Matrix::hatColumnsInitialize(
     assert((center_displacement >= 0.0) & (center_displacement <= 1.0));
 
     std::random_device rd;
-    std::mt19937 gen(rd());
+    unsigned int seed1 = 0;
+    // std::mt19937 gen(rd());
+    std::mt19937 gen(seed1);
     std::uniform_real_distribution<> dis(-1, +1);
 
     int row_center_displacement
