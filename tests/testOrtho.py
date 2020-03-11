@@ -4,7 +4,7 @@ import os
 import subprocess
 import string
 
-print("Test OrthoGaussian...")
+print("Test Ortho...")
 
 nargs=len(sys.argv)
 

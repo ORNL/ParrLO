@@ -22,6 +22,9 @@ namespace po = boost::program_options;
 // [Matrix]
 // nrows=32
 // ncols=4
+// [ColumnsType]
+// wavefunctions_type = gaussian
+//                    = hat
 // [ColumnsCenter]
 // displacement = 0.5
 // [Rescaling]
@@ -54,6 +57,7 @@ int main(int argc, char** argv)
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
         std::vector<int> idata;
+        std::string iwavefunctions_type;
         double iwavefunctions_center_displacement = 0.0;
         double irescaling;
         bool idiagonal_rescaling;
@@ -76,7 +80,9 @@ int main(int argc, char** argv)
             po::options_description config("Configuration");
             config.add_options()("Matrix.nrows", po::value<int>()->required(),
                 "number of matrix rows")("Matrix.ncols",
-                po::value<int>()->required(), "number of matrix columns")(
+                po::value<int>()->required(),
+                "number of matrix columns")("ColumnsType.wavefunctions_type",
+                po::value<std::string>()->required(), "wavefunction type")(
                 "ColumnsCenter.displacement", po::value<double>()->required(),
                 "displacement ratio for the center of the wave functions")(
                 "Rescaling.rescaling", po::value<double>()->required(),
@@ -123,6 +129,8 @@ int main(int argc, char** argv)
             // to bcast to other MPI tasks
             idata.push_back(vm["Matrix.nrows"].as<int>());
             idata.push_back(vm["Matrix.ncols"].as<int>());
+            iwavefunctions_type
+                = vm["ColumnsType.wavefunctions_type"].as<std::string>();
             iwavefunctions_center_displacement
                 = vm["ColumnsCenter.displacement"].as<double>();
             irescaling          = vm["Rescaling.rescaling"].as<double>();
@@ -139,16 +147,18 @@ int main(int argc, char** argv)
 
         if (comm_rank != 0) idata.resize(nidata);
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, MPI_COMM_WORLD);
+        int wave_string_length = iwavefunctions_type.length();
+        MPI_Bcast(&wave_string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&iwavefunctions_center_displacement, 1, MPI_DOUBLE, 0,
             MPI_COMM_WORLD);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-        int string_length = iortho_type.length();
-        MPI_Bcast(&string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        int ortho_string_length = iortho_type.length();
+        MPI_Bcast(&ortho_string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         // bcast "iortho_type"
         {
-            std::vector<char> iortho_type_v(string_length + 1);
+            std::vector<char> iortho_type_v(ortho_string_length + 1);
             if (comm_rank == 0)
                 strcpy(iortho_type_v.data(), iortho_type.c_str());
             ret = MPI_Bcast(iortho_type_v.data(), iortho_type_v.size(),
@@ -159,6 +169,24 @@ int main(int argc, char** argv)
             {
                 std::string new_iortho_type(iortho_type_v.data());
                 iortho_type = new_iortho_type;
+            }
+        }
+
+        // bcast "iwavefunctions_type"
+        {
+            std::vector<char> iwavefunctions_type_v(wave_string_length + 1);
+            if (comm_rank == 0)
+                strcpy(
+                    iwavefunctions_type_v.data(), iwavefunctions_type.c_str());
+            ret = MPI_Bcast(iwavefunctions_type_v.data(),
+                iwavefunctions_type_v.size(), MPI_CHAR, 0, MPI_COMM_WORLD);
+            if (ret != MPI_SUCCESS)
+                std::cerr << "iortho_type_v: MPI_Bcast error!" << std::endl;
+            else
+            {
+                std::string new_iwavefunctions_type(
+                    iwavefunctions_type_v.data());
+                iwavefunctions_type = new_iwavefunctions_type;
             }
         }
 
@@ -182,9 +210,14 @@ int main(int argc, char** argv)
         Matrix A(nrows, ncols, MPI_COMM_WORLD);
 
         double standard_deviation = 0.8;
+        double support_length     = 0.1;
 
-        A.gaussianColumnsInitialize(
-            standard_deviation, iwavefunctions_center_displacement);
+        if (iwavefunctions_type == "gaussian")
+            A.gaussianColumnsInitialize(
+                standard_deviation, iwavefunctions_center_displacement);
+        else if (iwavefunctions_type == "hat")
+            A.hatColumnsInitialize(
+                support_length, iwavefunctions_center_displacement);
         // A.activateRescaling();
 
         // Perform the check on the departure from orthogonality before
