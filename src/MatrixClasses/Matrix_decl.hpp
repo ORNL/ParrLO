@@ -39,7 +39,6 @@ private:
     // Boolean variables
     bool host_data_initialized_   = false;
     bool device_data_initialized_ = false;
-    bool apply_rescaling_         = false;
 
     // Compute local contributions to aTa
     void computeAtA();
@@ -79,9 +78,6 @@ public:
     // Set columns of the matrix to Gaussian functions
     void hatColumnsInitialize(
         double support_length_ration, double center_displacement = 0.0);
-
-    // Option to activate the pre and post rescaling of the Replicated matrix
-    void activateRescaling();
 
     // Routines to retrieve info about the size of a matrix
     size_t getNumRows() const;
