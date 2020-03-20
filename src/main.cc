@@ -218,7 +218,6 @@ int main(int argc, char** argv)
         else if (iwavefunctions_type == "hat")
             A.hatColumnsInitialize(
                 support_length, iwavefunctions_center_displacement);
-        // A.activateRescaling();
 
         // Perform the check on the departure from orthogonality before
         // re-orthogonalizing

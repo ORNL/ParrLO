@@ -357,12 +357,6 @@ void Matrix::hatColumnsInitialize(
     this->transferDataCPUtoGPU();
 }
 
-void Matrix::activateRescaling()
-{
-    assert(!apply_rescaling_);
-    apply_rescaling_ = true;
-}
-
 size_t Matrix::getNumRows() const { return n_rows_; }
 size_t Matrix::getNumRowsLocal() const { return n_rows_local_; }
 size_t Matrix::getNumCols() const { return n_cols_; }
@@ -575,12 +569,12 @@ int Matrix::orthogonalize_iterative_method(std::string method,
 
     Replicated AtA(&replicated_S_, n_cols_, lacomm_);
 
-    if (apply_rescaling_ || diagonal_rescaling) AtA.preRescale();
+    if (diagonal_rescaling) AtA.preRescale();
     if (method == "iterative_method_single")
         count_iter = AtA.SchulzStabilizedSingle(max_iter, tol);
     else
         count_iter = AtA.SchulzCoupled(max_iter, tol);
-    if (apply_rescaling_ || diagonal_rescaling) AtA.postRescale();
+    if (diagonal_rescaling) AtA.postRescale();
 
     // Restore orthogonality on columns of A
     double* dAortho;
@@ -646,9 +640,7 @@ void Matrix::orthogonalize_direct_invsqrt()
     magma_queue_create(device, &queue);
 
     Replicated AtA(&replicated_S_, n_cols_, lacomm_);
-    if (apply_rescaling_) AtA.preRescale();
     AtA.InvSqrt();
-    if (apply_rescaling_) AtA.postRescale();
 
     // Restore orthogonality on columns of A
     double* dAortho;
@@ -693,10 +685,8 @@ void Matrix::orthogonalize_direct_cholesky()
     magma_queue_create(device, &queue);
 
     Replicated AtA(&replicated_S_, n_cols_, lacomm_);
-    if (apply_rescaling_) AtA.preRescale();
     AtA.CholeskyQR();
     AtA.printMatrix();
-    if (apply_rescaling_) AtA.postRescale();
 
     // Restore orthogonality on columns of A
     magma_dtrmm(MagmaRight, MagmaLower, MagmaTrans, MagmaNonUnit, n_rows_local_,
