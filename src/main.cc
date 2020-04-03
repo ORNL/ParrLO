@@ -27,6 +27,8 @@ namespace po = boost::program_options;
 //                    = hat
 // [ColumnsCenter]
 // displacement = 0.5
+// [ColumnsWidth]
+// wavefunctions_width = 0.1
 // [Rescaling]
 // rescaling=0.01
 // [DiagonalRescaling]
@@ -59,6 +61,7 @@ int main(int argc, char** argv)
         std::vector<int> idata;
         std::string iwavefunctions_type;
         double iwavefunctions_center_displacement = 0.0;
+        double iwavefunctions_width               = 0.8;
         double irescaling;
         bool idiagonal_rescaling;
         std::string iortho_type;
@@ -85,6 +88,9 @@ int main(int argc, char** argv)
                 po::value<std::string>()->required(), "wavefunction type")(
                 "ColumnsCenter.displacement", po::value<double>()->required(),
                 "displacement ratio for the center of the wave functions")(
+                "ColumnsWidth.wavefunctions_width",
+                po::value<double>()->required(),
+                "width ratio for the extension of the wave functions")(
                 "Rescaling.rescaling", po::value<double>()->required(),
                 "rescaling for perturbation from orthogonality")(
                 "DiagonalRescaling.rescaling", po::value<bool>()->required(),
@@ -131,6 +137,8 @@ int main(int argc, char** argv)
             idata.push_back(vm["Matrix.ncols"].as<int>());
             iwavefunctions_type
                 = vm["ColumnsType.wavefunctions_type"].as<std::string>();
+            iwavefunctions_width
+                = vm["ColumnsWidth.wavefunctions_width"].as<double>();
             iwavefunctions_center_displacement
                 = vm["ColumnsCenter.displacement"].as<double>();
             irescaling          = vm["Rescaling.rescaling"].as<double>();
@@ -149,6 +157,7 @@ int main(int argc, char** argv)
         MPI_Bcast(idata.data(), nidata, MPI_INT, 0, MPI_COMM_WORLD);
         int wave_string_length = iwavefunctions_type.length();
         MPI_Bcast(&wave_string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&iwavefunctions_width, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&iwavefunctions_center_displacement, 1, MPI_DOUBLE, 0,
             MPI_COMM_WORLD);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -209,8 +218,8 @@ int main(int argc, char** argv)
 
         Matrix A(nrows, ncols, MPI_COMM_WORLD);
 
-        double standard_deviation = 0.8;
-        double support_length     = 0.1;
+        double standard_deviation = iwavefunctions_width;
+        double support_length     = iwavefunctions_width;
 
         if (iwavefunctions_type == "gaussian")
             A.gaussianColumnsInitialize(
