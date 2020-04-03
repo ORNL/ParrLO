@@ -1,0 +1,9 @@
+#!/bin/bash
+source ../scripts/modules.summit_magma2.5.3
+
+cmake -DBUILD_FOR_GPU=ON \
+      -DMPIEXEC_EXECUTABLE="/sw/summit/xalt/1.2.0/bin/jsrun" \
+      -DMPIEXEC_NUMPROCS_FLAG="-n" \
+      -DMPIEXEC_PREFLAGS="-a1;-c7;-bpacked:2;-g1" \
+      -DCMAKE_PREFIX_PATH="/autofs/nccs-svm1_proj/cph125/magma-2.5.3" \
+      ..
