@@ -207,6 +207,8 @@ int main(int argc, char** argv)
 
 #ifdef USE_MAGMA
         magma_init();
+
+        if (comm_rank == 0) magma_print_environment();
 #endif
 
         int nrows = idata[0];
