@@ -7,6 +7,10 @@
 #include <memory> //needed for unique pointers
 #include <mpi.h>
 #include <vector>
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
+
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
@@ -18,6 +22,13 @@ private:
     size_t n_rows_; // number of rows
     size_t n_cols_; // number of columns
     MPI_Comm lacomm_;
+
+#ifndef NCCL_COMM
+    typedef int ncclComm_t;
+    ncclComm_t nccllacomm_ = 0;
+#else
+    ncclComm_t nccllacomm_ = NULL;
+#endif
 
     std::vector<double> host_data_; // vector for data on host
     double* device_data_ = nullptr; // pointer to basic data structure on gpu
@@ -45,7 +56,7 @@ private:
 
 public:
     // Constructor
-    Matrix(size_t, size_t, MPI_Comm); // basic constructor
+    Matrix(size_t, size_t, MPI_Comm, ncclComm_t);
 
     // Copy constructor
     Matrix(Matrix&);
@@ -53,10 +64,10 @@ public:
     // Destructor must be explicitly implemented to free memory on gpu
     ~Matrix();
 
-    // Transfer data frok CPU to GPU
+    // Transfer data from CPU to GPU
     void transferDataCPUtoGPU();
 
-    // Transfer data frok GPU to CPU
+    // Transfer data from GPU to CPU
     void transferDataGPUtoCPU();
 
     // Return whether a matrix has initialized data or not

@@ -13,6 +13,12 @@ foreach(X ${MAIN})
   target_include_directories(${X} PRIVATE ${MPI_CXX_INCLUDE_DIRS})
 endforeach()
 
+if (${NCCL_COMM})
+  foreach(X ${MAIN})
+    target_link_libraries(${X} PRIVATE ${NCCL_LIBRARY})
+  endforeach()
+endif()
+
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
   foreach(X ${MAIN})

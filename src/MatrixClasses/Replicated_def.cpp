@@ -3,6 +3,9 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
 
 Timer Replicated::allreduce_tm_("Replicated::allreduce");
 Timer Replicated::memory_initialization_tm_(
@@ -64,8 +67,9 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     return normC / normA;
 }
 
-Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
-    : dim_(dim), lacomm_(comm), verbosity_(verbosity)
+Replicated::Replicated(
+    const size_t dim, MPI_Comm comm, ncclComm_t ncclcomm, int verbosity)
+    : dim_(dim), lacomm_(comm), nccllacomm_(ncclcomm), verbosity_(verbosity)
 {
     data_initialized_ = false;
     size_t ld         = magma_roundup(dim_, 32);
@@ -80,9 +84,9 @@ Replicated::Replicated(const size_t dim, MPI_Comm comm, int verbosity)
     own_data_ = true;
 }
 
-Replicated::Replicated(
-    double** partial, size_t dim, MPI_Comm comm, int verbosity)
-    : dim_(dim), lacomm_(comm), verbosity_(verbosity)
+Replicated::Replicated(double** partial, size_t dim, MPI_Comm comm,
+    ncclComm_t ncclcomm, int verbosity)
+    : dim_(dim), lacomm_(comm), nccllacomm_(ncclcomm), verbosity_(verbosity)
 {
     data_initialized_ = true;
     own_data_         = false;
@@ -98,7 +102,7 @@ Replicated::Replicated(
 }
 
 Replicated::Replicated(const Replicated& mat)
-    : dim_(mat.dim_), lacomm_(mat.lacomm_)
+    : dim_(mat.dim_), lacomm_(mat.lacomm_), nccllacomm_(mat.nccllacomm_)
 {
     size_t ld = magma_roundup(dim_, 32);
 
@@ -724,12 +728,56 @@ void Replicated::InvSqrt()
     magma_queue_destroy(queue);
 }
 
+#ifdef NCCL_COMM
+void Replicated::consolidate()
+{
+    magma_int_t ld = magma_roundup(dim_, 32);
+    magma_device_t device;
+    magma_queue_t queue;
+
+    magma_getdevice(&device);
+
+    magma_queue_create(device, &queue);
+
+    // Start timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.start();
+
+    cudaStream_t s;
+    cudaStreamCreate(&s);
+
+    ncclAllReduce(*device_data_, *device_data_, dim_ * ld, ncclDouble, ncclSum,
+        nccllacomm_, s);
+
+    cudaStreamSynchronize(s);
+    cudaStreamDestroy(s);
+
+    // Stop timer to measure time spent in MPI_Allreduce
+    allreduce_tm_.stop();
+
+    std::vector<double> hCsum_h(dim_ * dim_, 0.0);
+
+    magma_dgetmatrix(
+        dim_, dim_, *device_data_, ld, hCsum_h.data(), dim_, queue);
+
+    // Extract the diagonal matrix of the replicated matrix
+    for (size_t i = 0; i < dim_; ++i)
+        diagonal_[i] = hCsum_h[i + i * dim_];
+    if (verbosity_ > 0)
+    {
+        std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
+        magma_dprint_gpu(dim_, dim_, *device_data_, ld, queue);
+    }
+
+    magma_queue_destroy(queue);
+}
+
+#else
 void Replicated::consolidate()
 {
     // Start timer for array allocation on host
     host_array_allocation_tm_.start();
 
-    double* hC    = new double[dim_ * dim_];
+    double* hC = new double[dim_ * dim_];
     double* hCsum = new double[dim_ * dim_];
 
     // Stop timer for vector allocation on host
@@ -783,3 +831,4 @@ void Replicated::consolidate()
 
     magma_queue_destroy(queue);
 }
+#endif

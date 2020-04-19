@@ -8,6 +8,9 @@
 #include <iostream>
 #include <mpi.h>
 #include <vector>
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
 
 int main(int argc, char** argv)
 {
@@ -34,6 +37,21 @@ int main(int argc, char** argv)
         return 1;
     }
 
+#ifdef NCCL_COMM
+    ncclUniqueId id;
+    ncclComm_t nccl_world_comm;
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) ncclGetUniqueId(&id);
+    MPI_Bcast((void*)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+    ncclCommInitRank(&nccl_world_comm, size, id, rank);
+#else
+    int nccl_world_comm = 0;
+#endif
+
     std::string name = "test_Schultz";
     Timer tstime(name);
     tstime.start();
@@ -41,13 +59,14 @@ int main(int argc, char** argv)
     // dimension of matrix
     const int n = 10;
 
-    Replicated A(n, MPI_COMM_WORLD);
+    Replicated A(n, MPI_COMM_WORLD, nccl_world_comm);
 
     // initialize with random values in interval [-0.1,0.1]
     A.initializeRandomSymmetric();
     A.scale(0.1);
 
-    Replicated B(n, MPI_COMM_WORLD);
+    Replicated B(n, MPI_COMM_WORLD, nccl_world_comm);
+
     B.setDiagonal(1.);
     B.add(0.1, A);
     B.printMatrix();
@@ -109,6 +128,10 @@ int main(int argc, char** argv)
 
     // Print timers for operations performed on Replicated matrix
     B.printTimers(std::cout);
+
+#ifdef NCCL_COMM
+    ncclCommDestroy(nccl_world_comm);
+#endif
 
     mpirc = MPI_Finalize();
     if (mpirc != MPI_SUCCESS)

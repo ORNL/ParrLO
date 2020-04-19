@@ -1,0 +1,22 @@
+#!/bin/bash
+#BSUB -P CPH125
+#BSUB -J orthomain
+#BSUB -o orthomain.o%J
+#BSUB -e orthomain.e%J
+#BSUB -W 20
+#BSUB -nnodes 2
+#BSUB -alloc_flags gpumps
+
+
+. /ccs/home/gwjgavin/ParallelLinearAlgebra_dev/ParallelLinearAlgebra/scripts/modules.summit
+
+set -x
+date
+
+NUMNODES=$((($LSB_DJOB_NUMPROC-1)/42))
+NUMRSRC=$((NUMNODES*6))
+
+BUILDDIR=/ccs/home/gwjgavin/ParallelLinearAlgebra_dev/ParallelLinearAlgebra/build/src 
+EXE=$BUILDDIR/main
+
+jsrun -n $NUMRSRC -a 1 -c 1 -g 1 -r 6 --smpiargs="-gpu" -d cyclic $EXE -c $BUILDDIR/../../benchmarks/main/input.cfg

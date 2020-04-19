@@ -5,6 +5,9 @@
 #include <mpi.h>
 #include <string>
 #include <unistd.h>
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
 
 #ifndef USE_MAGMA
 #include "magma_v2.h"
@@ -32,6 +35,18 @@ int main(int argc, char** argv)
         MPI_Comm_rank(lacomm, &comm_rank);
         MPI_Comm_size(lacomm, &comm_size);
 
+#ifdef NCCL_COMM
+        ncclUniqueId id;
+        ncclComm_t nccl_world_comm;
+
+        if (comm_rank == 0) ncclGetUniqueId(&id);
+        MPI_Bcast((void*)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+        ncclCommInitRank(&nccl_world_comm, comm_size, id, comm_rank);
+#else
+        int nccl_world_comm = 0;
+#endif
+
         std::string name = "test_ortho";
         Timer totime(name);
         totime.start();
@@ -44,8 +59,8 @@ int main(int argc, char** argv)
         const int nrows = 20;
         const int ncols = 10;
 
-        Matrix A(nrows, ncols, lacomm);
-        Matrix B(nrows, ncols, lacomm);
+        Matrix A(nrows, ncols, lacomm, nccl_world_comm);
+        Matrix B(nrows, ncols, lacomm, nccl_world_comm);
 
         A.randomInitialize();
         A.scaleMatrix(0.01);
@@ -95,6 +110,10 @@ int main(int argc, char** argv)
             totime.stop();
             totime.print(std::cout);
 
+#ifdef NCCL_COMM
+            ncclCommDestroy(nccl_world_comm);
+#endif
+
             MPI_Finalize();
 
             return 0;
@@ -116,6 +135,10 @@ int main(int argc, char** argv)
 #endif
             totime.stop();
             totime.print(std::cout);
+
+#ifdef NCCL_COMM
+            ncclCommDestroy(nccl_world_comm);
+#endif
 
             MPI_Finalize();
 
