@@ -26,6 +26,13 @@ set(BUILD_FOR_GPU FALSE CACHE BOOL "Whether to build for GPU")
 if(${BUILD_FOR_GPU})
   enable_language(CUDA)
 
+  set(NCCL_COMM FALSE CACHE BOOL "Whether to use NCCL (RECOMMENDED)")
+  if(${NCCL_COMM})
+    find_package(NCCL)
+    include_directories(${NCCL_INCLUDE_DIR})
+    add_definitions(-DNCCL_COMM)
+  endif()
+
   find_package(MAGMA REQUIRED)
 endif()
 
@@ -53,7 +60,7 @@ if(${PLA_WITH_CLANG_FORMAT})
   if(${CLANG_FORMAT_FOUND})
     message(STATUS "Indent with clang-format")
     file(GLOB_RECURSE FORMAT_SOURCES src/*.cc src/*.h src/*.cpp src/*.hpp
-      tests/*.cc tests/*.h tests/*.cpp tests/*.hpp)
+      tests/*.cc tests/*.h tests/*.cpp tests/*.hpp benchmarks/mpi/*.cc)
     add_custom_target(format
       COMMAND ${CLANG_FORMAT_EXECUTABLE} -i -style=file ${FORMAT_SOURCES}
       DEPENDS ${FORMAT_SOURCES})
@@ -65,3 +72,5 @@ enable_testing()
 add_subdirectory(src)
 
 add_subdirectory(tests)
+
+add_subdirectory(benchmarks/mpi)

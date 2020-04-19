@@ -9,6 +9,9 @@
 #ifdef USE_MAGMA
 #include "magma_v2.h"
 #endif
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
 
 double relativeDiscrepancy(size_t, size_t, const double*, const double*);
 
@@ -18,6 +21,14 @@ class Replicated
 private:
     size_t dim_      = 0; // dimension of replicated Matrix
     MPI_Comm lacomm_ = NULL;
+
+#ifndef NCCL_COMM
+    typedef int ncclComm_t;
+    ncclComm_t nccllacomm_ = 0;
+#else
+    ncclComm_t nccllacomm_ = NULL;
+#endif
+
     double** device_data_; // pointer to basic data structure
     double* auxiliary_device_data_;
     std::vector<double> diagonal_;
@@ -50,13 +61,13 @@ private:
     void consolidate();
 
 public:
-    Replicated(const size_t dim, MPI_Comm, int verbosity = 0);
+    Replicated(const size_t dim, MPI_Comm, ncclComm_t, int verbosity = 0);
+
+    // Build matrix with local (partial) contributions to matrix elements
+    Replicated(double**, size_t, MPI_Comm, ncclComm_t, int verbosity = 0);
 
     // Copy constructor
     Replicated(const Replicated& mat);
-
-    // Build matrix with local (partial) contributions to matrix elements
-    Replicated(double**, size_t, MPI_Comm, int verbosity = 0);
 
     ~Replicated();
 

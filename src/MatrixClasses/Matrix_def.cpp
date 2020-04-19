@@ -10,10 +10,9 @@ Timer Matrix::allocate_tm_("Matrix::allocate");
 Timer Matrix::free_tm_("Matrix::free");
 Timer Matrix::ortho_tm_("Matrix::ortho");
 
-Matrix::Matrix(size_t n, size_t m, MPI_Comm comm)
-    : n_rows_(n), n_cols_(m), lacomm_(comm)
+Matrix::Matrix(size_t n, size_t m, MPI_Comm comm, ncclComm_t nccllacomm)
+    : n_rows_(n), n_cols_(m), lacomm_(comm), nccllacomm_(nccllacomm)
 {
-
     int comm_rank, comm_size;
     MPI_Comm_rank(lacomm_, &comm_rank);
     MPI_Comm_size(lacomm_, &comm_size);
@@ -567,7 +566,7 @@ int Matrix::orthogonalize_iterative_method(std::string method,
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_, nccllacomm_);
 
     if (diagonal_rescaling) AtA.preRescale();
     if (method == "iterative_method_single")
@@ -639,7 +638,8 @@ void Matrix::orthogonalize_direct_invsqrt()
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_, nccllacomm_);
+
     AtA.InvSqrt();
 
     // Restore orthogonality on columns of A
@@ -684,7 +684,8 @@ void Matrix::orthogonalize_direct_cholesky()
     magma_getdevice(&device);
     magma_queue_create(device, &queue);
 
-    Replicated AtA(&replicated_S_, n_cols_, lacomm_);
+    Replicated AtA(&replicated_S_, n_cols_, lacomm_, nccllacomm_);
+
     AtA.CholeskyQR();
     AtA.printMatrix();
 

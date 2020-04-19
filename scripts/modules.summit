@@ -5,8 +5,8 @@ module load xalt
 module load spectrum-mpi
 module load openblas 
 module load cmake
-module load cuda
+module load cuda/10.1.168
 module load boost
-module load magma
 module load netlib-lapack
 module load python/3
+module load magma

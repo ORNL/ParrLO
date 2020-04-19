@@ -6,6 +6,10 @@
 #include <string>
 #include <unistd.h>
 
+#ifdef NCCL_COMM
+#include "nccl.h"
+#endif
+
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
@@ -205,6 +209,18 @@ int main(int argc, char** argv)
         Timer matrix_time("matrix_ortho");
         matrix_time.start();
 
+#ifdef NCCL_COMM
+        ncclUniqueId id;
+        ncclComm_t nccl_world_comm;
+
+        if (comm_rank == 0) ncclGetUniqueId(&id);
+        MPI_Bcast((void*)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+        ncclCommInitRank(&nccl_world_comm, comm_size, id, comm_rank);
+#else
+        int nccl_world_comm = 0;
+#endif
+
 #ifdef USE_MAGMA
         magma_init();
 
@@ -218,7 +234,7 @@ int main(int argc, char** argv)
             std::cout << "Matrix size: " << nrows << "x" << ncols << std::endl;
         }
 
-        Matrix A(nrows, ncols, MPI_COMM_WORLD);
+        Matrix A(nrows, ncols, MPI_COMM_WORLD, nccl_world_comm);
 
         double standard_deviation = iwavefunctions_width;
         double support_length     = iwavefunctions_width;
@@ -271,6 +287,10 @@ int main(int argc, char** argv)
 
 #ifdef USE_MAGMA
     magma_finalize();
+#endif
+
+#ifdef NCCL_COMM
+//    ncclCommDestroy(nccl_world_comm);
 #endif
 
     MPI_Finalize();
