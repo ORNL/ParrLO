@@ -754,14 +754,13 @@ void Replicated::consolidate()
     // Stop timer to measure time spent in MPI_Allreduce
     allreduce_tm_.stop();
 
-    std::vector<double> hCsum_h(dim_ * dim_, 0.0);
+    std::vector<double> hCsum_h(dim_);
 
-    magma_dgetmatrix(
-        dim_, dim_, *device_data_, ld, hCsum_h.data(), dim_, queue);
+    magma_dgetvector(dim_, *device_data_, ld + 1, hCsum_h.data(), 1, queue);
 
     // Extract the diagonal matrix of the replicated matrix
     for (size_t i = 0; i < dim_; ++i)
-        diagonal_[i] = hCsum_h[i + i * dim_];
+        diagonal_[i] = hCsum_h[i];
     if (verbosity_ > 0)
     {
         std::cout << "Printing matrix after MPI_Allreduce SUM:" << std::endl;
