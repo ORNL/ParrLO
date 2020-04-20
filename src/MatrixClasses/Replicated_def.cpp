@@ -256,6 +256,8 @@ double Replicated::maxNorm() const
 
 void Replicated::preRescale()
 {
+    pre_rescale_tm_.start();
+
     magma_queue_t queue;
     int device, info;
     magma_getdevice(&device);
@@ -279,9 +281,6 @@ void Replicated::preRescale()
 
     // Stop timer for memory allocation
     memory_initialization_tm_.stop();
-
-    // Start timer for pre-rescaling
-    pre_rescale_tm_.start();
 
     // Compute D^(-1/2)*S
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
@@ -294,9 +293,6 @@ void Replicated::preRescale()
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
         *device_data_, lddc, queue, &info);
 
-    // Stop timer for pre-rescaling
-    pre_rescale_tm_.start();
-
     // Start timer for memory deallocation
     memory_free_tm_.start();
 
@@ -306,10 +302,14 @@ void Replicated::preRescale()
     memory_free_tm_.stop();
 
     magma_queue_destroy(queue);
+
+    pre_rescale_tm_.stop();
 }
 
 void Replicated::postRescale()
 {
+    post_rescale_tm_.start();
+
     magma_queue_t queue;
     int device, info;
     magma_getdevice(&device);
@@ -334,15 +334,9 @@ void Replicated::postRescale()
     // Stop timer for memory allocation
     memory_initialization_tm_.stop();
 
-    // Start timer for post-rescaling
-    post_rescale_tm_.start();
-
     // Compute D^(-1/2) * S_tilde
     magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
         *device_data_, lddc, queue, &info);
-
-    // Stop timer for post-rescaling
-    post_rescale_tm_.start();
 
     // Start timer for memory deallocation
     memory_free_tm_.start();
@@ -353,6 +347,8 @@ void Replicated::postRescale()
     memory_free_tm_.start();
 
     magma_queue_destroy(queue);
+
+    post_rescale_tm_.stop();
 }
 
 int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
