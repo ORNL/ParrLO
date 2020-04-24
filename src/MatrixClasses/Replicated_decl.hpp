@@ -33,6 +33,8 @@ private:
     double* auxiliary_device_data_;
     std::vector<double> diagonal_;
 
+    double* device_inv_sqrt_diagonal_;
+
     // flag to specify is object is responsible for releasing memory
     // associated with device_data_
     bool own_data_;

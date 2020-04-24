@@ -76,6 +76,7 @@ Replicated::Replicated(
 
     magma_dmalloc(&auxiliary_device_data_, dim_ * ld);
     device_data_ = &auxiliary_device_data_;
+    magma_dmalloc(&device_inv_sqrt_diagonal_, dim_);
 
     diagonal_.resize(dim_);
     for (size_t i = 0; i < dim_; ++i)
@@ -92,6 +93,7 @@ Replicated::Replicated(double** partial, size_t dim, MPI_Comm comm,
     own_data_         = false;
 
     device_data_ = partial;
+    magma_dmalloc(&device_inv_sqrt_diagonal_, dim_);
 
     diagonal_.resize(dim_);
     for (size_t i = 0; i < dim_; ++i)
@@ -108,7 +110,8 @@ Replicated::Replicated(const Replicated& mat)
 
     magma_dmalloc(&auxiliary_device_data_, dim_ * ld);
     device_data_ = &auxiliary_device_data_;
-    own_data_    = true;
+    magma_dmalloc(&device_inv_sqrt_diagonal_, dim_);
+    own_data_ = true;
 
     magma_queue_t queue;
     int device;
@@ -146,6 +149,13 @@ Replicated::~Replicated()
             std::cout << "magma free device_data invalid ptr rep destr"
                       << std::endl;
         }
+    }
+
+    ret = magma_free(device_inv_sqrt_diagonal_);
+    if (ret == MAGMA_ERR_INVALID_PTR)
+    {
+        std::cout << "magma free device_inv_sqrt_diagonal_: "
+                  << "invalid ptr rep destr" << std::endl;
     }
 }
 
@@ -265,8 +275,7 @@ void Replicated::preRescale()
     size_t lddc = magma_roundup(dim_, 32);
 
     // Rescale the device_data_
-    std::vector<double> host_inv_sqrt_diagonal;
-    host_inv_sqrt_diagonal.resize(dim_);
+    std::vector<double> host_inv_sqrt_diagonal(dim_);
 
     for (size_t i = 0; i < dim_; ++i)
         host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
@@ -274,32 +283,22 @@ void Replicated::preRescale()
     // Start timer for memory allocation
     memory_initialization_tm_.start();
 
-    double* device_inv_sqrt_diagonal;
-    magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
     magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
-        device_inv_sqrt_diagonal, 1, queue);
+        device_inv_sqrt_diagonal_, 1, queue);
 
     // Stop timer for memory allocation
     memory_initialization_tm_.stop();
 
     // Compute D^(-1/2)*S
-    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal_,
         *device_data_, lddc, queue, &info);
 
     // Compute (D^(-1/2)*S)^T = S * D^(-1/2)
     magmablas_dtranspose_inplace(dim_, *device_data_, lddc, queue);
 
     // Compute D^(-1/2) * S * D^(-1/2)
-    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal_,
         *device_data_, lddc, queue, &info);
-
-    // Start timer for memory deallocation
-    memory_free_tm_.start();
-
-    magma_free(device_inv_sqrt_diagonal);
-
-    // Stop timer for memory deallocation
-    memory_free_tm_.stop();
 
     magma_queue_destroy(queue);
 
@@ -316,35 +315,9 @@ void Replicated::postRescale()
     magma_queue_create(device, &queue);
     size_t lddc = magma_roundup(dim_, 32);
 
-    // Rescale the device_data_
-    std::vector<double> host_inv_sqrt_diagonal;
-    host_inv_sqrt_diagonal.resize(dim_);
-
-    for (size_t i = 0; i < dim_; ++i)
-        host_inv_sqrt_diagonal[i] = 1. / std::sqrt(diagonal_[i]);
-
-    // Start timer for memory allocation
-    memory_initialization_tm_.start();
-
-    double* device_inv_sqrt_diagonal;
-    magma_dmalloc(&device_inv_sqrt_diagonal, dim_);
-    magma_dsetvector(dim_, &host_inv_sqrt_diagonal[0], 1,
-        device_inv_sqrt_diagonal, 1, queue);
-
-    // Stop timer for memory allocation
-    memory_initialization_tm_.stop();
-
     // Compute D^(-1/2) * S_tilde
-    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal,
+    magmablas_dlascl2(MagmaFull, dim_, dim_, device_inv_sqrt_diagonal_,
         *device_data_, lddc, queue, &info);
-
-    // Start timer for memory deallocation
-    memory_free_tm_.start();
-
-    magma_free(device_inv_sqrt_diagonal);
-
-    // Stop timer for memory deallocation
-    memory_free_tm_.start();
 
     magma_queue_destroy(queue);
 
