@@ -281,7 +281,9 @@ void Matrix::gaussianColumnsInitialize(
     std::mt19937 gen(seed1);
     std::uniform_real_distribution<> dis(-1, +1);
 
-    double scaling_factor = 1. / (std::sqrt(2 * M_PI) * standard_deviation);
+    double width_spread = static_cast<double>(n_rows_) / n_cols_;
+    double scaling_factor
+        = 1. / (std::sqrt(2 * M_PI) * standard_deviation * width_spread);
     int row_center_displacement
         = static_cast<int>((static_cast<double>(n_rows_) / n_cols_)
                            * center_displacement * dis(gen));
@@ -299,7 +301,7 @@ void Matrix::gaussianColumnsInitialize(
             size_t global_index = global_row_id_[i];
             double exponent     = (static_cast<double>(global_index)
                                   - static_cast<double>(gaussian_center))
-                              / standard_deviation;
+                              / (standard_deviation * width_spread);
             exponent *= exponent;
             exponent = -0.5 * exponent;
             host_data_[i + j * n_rows_local_]
