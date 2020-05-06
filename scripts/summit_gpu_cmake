@@ -5,6 +5,7 @@ cmake -DBUILD_FOR_GPU=ON \
       -DMPIEXEC_EXECUTABLE="/sw/summit/xalt/1.2.0/bin/jsrun" \
       -DMPIEXEC_NUMPROCS_FLAG="-n" \
       -DMPIEXEC_PREFLAGS="-a1;-c7;-bpacked:2;-g1" \
+      -DMPIEXEC_PREFLAGS_MATMUL="-a1;-c1;-g1;--smpiargs=\"-gpu\";-d;cyclic" \
       -DMPIEXEC_PREFLAGS_DEVICECOMM="-a1;-c1;-g1;-r6;--smpiargs=\"-gpu\";-d;cyclic" \
       -DNCCL_COMM=ON \
       ..
