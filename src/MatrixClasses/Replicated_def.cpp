@@ -44,19 +44,19 @@ double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     double* C;
     magma_dmalloc(&C, lddc * m);
 
-    magma_norm_t inf_norm = MagmaInfNorm;
+    magma_norm_t matrix_norm = MagmaOneNorm;
     double* dwork;
     magma_dmalloc(&dwork, lddc);
 
     // Compute norm of A
-    normA = magmablas_dlange(inf_norm, n, m, A, lddc, dwork, lddc, queue);
+    normA = magmablas_dlange(matrix_norm, n, m, A, lddc, dwork, lddc, queue);
 
     // Compute C = A-B
     magma_dcopymatrix(n, m, B, lddc, C, lddc, queue2);
     magmablas_dgeadd2(n, m, 1.0, A, lddc, -1.0, C, lddc, queue2);
 
     // Compute norm of C = A-B
-    normC = magmablas_dlange(inf_norm, n, m, C, lddc, dwork, lddc, queue2);
+    normC = magmablas_dlange(matrix_norm, n, m, C, lddc, dwork, lddc, queue2);
 
     magma_free(C);
     magma_free(dwork);
