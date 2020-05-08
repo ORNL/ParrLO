@@ -1,0 +1,7 @@
+module load cmake
+module load cuda/10.1.168
+module load essl
+module load netlib-lapack
+module load boost
+module load python/3
+

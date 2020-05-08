@@ -51,7 +51,7 @@ find_package(MPI REQUIRED)
 set(Boost_COMPONENTS
   program_options
   )
-find_package(Boost 1.65 REQUIRED COMPONENTS ${Boost_COMPONENTS})
+find_package(Boost 1.59 REQUIRED COMPONENTS ${Boost_COMPONENTS})
 
 # clang-format (optional)
 set(PLA_WITH_CLANG_FORMAT FALSE CACHE BOOL "Indent code with clang-format")
