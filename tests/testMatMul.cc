@@ -87,6 +87,21 @@ int main(int argc, char** argv)
     // std::cout<<"print B device rank="<<rank<<std::endl;
     // magma_dprint_gpu(N,Nd,dB,ld,queue);
 
+    int j       = (rank + 1) % 2;
+    int offset0 = (1 - j) * Nd * ld;
+    int offset1 = j * Nd * ld;
+
+    // warmup
+    magma_dsetmatrix(N, N, C.data(), N, dC, ld, queue);
+    for (int i = 0; i < 10; i++)
+    {
+        MPI_Irecv(dC + offset1, Nd * ld, MPI_DOUBLE, j, 2345 + j,
+            MPI_COMM_WORLD, &reqs[j]);
+        MPI_Issend(dC + offset0, Nd * ld, MPI_DOUBLE, j, 2345 + rank,
+            MPI_COMM_WORLD, &reqs[rank]);
+        MPI_Waitall(2, reqs, MPI_STATUS_IGNORE);
+    }
+
     Timer time_comps("compute single");
 
     for (int i = 0; i < nreps; i++)
@@ -104,10 +119,6 @@ int main(int argc, char** argv)
     // magma_dprint_gpu(N,N,dC,ld,queue);
 
     magma_dsetmatrix(N, N, C.data(), N, dC, ld, queue);
-
-    int j       = (rank + 1) % 2;
-    int offset0 = (1 - j) * Nd * ld;
-    int offset1 = j * Nd * ld;
 
     Timer time_compp("compute parallel");
     Timer time_comm("comm");
