@@ -55,6 +55,7 @@ private:
     static Timer post_rescale_tm_;
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;
+    static Timer conv_test_tm_;
 
     // compute eigenvectors and eigenvalues of matrix
     void diagonalize(double* evecs, std::vector<double>& evals);
@@ -135,6 +136,7 @@ public:
         post_rescale_tm_.print(os);
         schulz_iteration_tm_.print(os);
         single_schulz_iteration_tm_.print(os);
+        conv_test_tm_.print(os);
     }
 
     // Friend methods

@@ -21,6 +21,7 @@ Timer Replicated::post_rescale_tm_("Replicated::post_rescale");
 Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
 Timer Replicated::single_schulz_iteration_tm_(
     "Replicated::single_schulz_iteration");
+Timer Replicated::conv_test_tm_("Replicated::convergence_test");
 
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
 {
@@ -498,7 +499,10 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
+        magma_queue_sync(queue);
+        conv_test_tm_.start();
         discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
+        conv_test_tm_.stop();
 
         double* dZtemp = dZ;
         dZ             = dZaux;
