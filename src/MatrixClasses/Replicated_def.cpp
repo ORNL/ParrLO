@@ -545,7 +545,7 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         // criterion
         magma_queue_sync(queue);
         conv_test_tm_.start();
-        //discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
+        // discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
         discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
         conv_test_tm_.stop();
 
