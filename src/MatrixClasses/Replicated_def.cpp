@@ -447,7 +447,8 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         // criterion
         conv_test_tm_.start();
         // discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
-        discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
+        if( count_iter % 5 == 0 )
+           discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
         conv_test_tm_.stop();
 
         double* dZtemp = dZ;
