@@ -14,6 +14,7 @@
 #endif
 
 double relativeDiscrepancy(size_t, size_t, const double*, const double*);
+double absoluteDiscrepancy(size_t, size_t, const double*, const double*);
 
 class Replicated
 {
