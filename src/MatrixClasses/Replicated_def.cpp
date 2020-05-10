@@ -445,8 +445,10 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
 
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
+        conv_test_tm_.start();
         //discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
         discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
+        conv_test_tm_.stop();
 
         double* dZtemp = dZ;
         dZ             = dZaux;
