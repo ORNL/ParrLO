@@ -273,6 +273,7 @@ int main(int argc, char** argv)
         if (comm_rank == 0) ncclGetUniqueId(&id);
         MPI_Bcast((void*)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
 
+        // create NCCL communicator
         ncclCommInitRank(&nccl_world_comm, comm_size, id, comm_rank);
 #else
         int nccl_world_comm = 0;
@@ -282,6 +283,25 @@ int main(int argc, char** argv)
         magma_init();
 
         if (comm_rank == 0) magma_print_environment();
+
+#ifdef NCCL_COMM
+        // warmup nccl
+        cudaStream_t s;
+        cudaStreamCreate(&s);
+        double* dwork;
+        int datasize = 32 * 100;
+        magma_dmalloc(&dwork, datasize);
+        for (int i = 0; i < 10; i++)
+        {
+            ncclAllReduce(dwork, dwork, datasize, ncclDouble, ncclSum,
+                nccl_world_comm, s);
+        }
+        magma_free(dwork);
+        cudaStreamSynchronize(s);
+        cudaStreamDestroy(s);
+
+#endif
+
 #endif
 
         int nrows = idata[0];
