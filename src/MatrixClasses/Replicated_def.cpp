@@ -109,6 +109,19 @@ double absoluteDiscrepancy(size_t n, size_t m, const double* A, const double* B)
     return normC;
 }
 
+double discrepancy(
+    size_t n, size_t m, const double* A, const double* B, std::string type)
+{
+    double value = 0.0;
+
+    if (type == "relative")
+        value = relativeDiscrepancy(n, m, A, B);
+    else if (type == "absolute")
+        value = absoluteDiscrepancy(n, m, A, B);
+
+    return value;
+}
+
 Replicated::Replicated(
     const size_t dim, MPI_Comm comm, ncclComm_t ncclcomm, int verbosity)
     : dim_(dim), lacomm_(comm), nccllacomm_(ncclcomm), verbosity_(verbosity)
@@ -366,13 +379,14 @@ void Replicated::postRescale()
     post_rescale_tm_.stop();
 }
 
-int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
+int Replicated::SchulzCoupled(unsigned int max_iter, double tol,
+    std::string convergence_check, int frequency_convergence_check)
 {
-    double alpha            = 1.0;
-    double beta             = 0.0;
-    double discrepancy      = 1.0;
-    size_t lddc             = magma_roundup(dim_, 32);
-    unsigned int count_iter = 0;
+    double alpha             = 1.0;
+    double beta              = 0.0;
+    double discrepancy_check = 1.0;
+    size_t lddc              = magma_roundup(dim_, 32);
+    unsigned int count_iter  = 0;
 
 #ifdef USE_MAGMA
 
@@ -418,7 +432,7 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     // Start timer for Schulz iteration
     schulz_iteration_tm_.start();
 
-    while ((count_iter < max_iter) & (discrepancy > tol))
+    while ((count_iter < max_iter) & (discrepancy_check > tol))
     {
         // Compute ZY
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha, dZ,
@@ -446,9 +460,9 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
         // Compute discrepancy between consecutive updates of dZ for convergence
         // criterion
         conv_test_tm_.start();
-        // discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
-        if (count_iter % 5 == 0)
-            discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
+        if (count_iter % frequency_convergence_check == 0)
+            discrepancy_check
+                = discrepancy(dim_, dim_, dZ, dZaux, convergence_check);
         conv_test_tm_.stop();
 
         double* dZtemp = dZ;
@@ -486,13 +500,14 @@ int Replicated::SchulzCoupled(unsigned int max_iter, double tol)
     return count_iter;
 }
 
-int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
+int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol,
+    std::string convergence_check, int frequency_convergence_check)
 {
-    double alpha            = 1.0;
-    double beta             = 0.0;
-    double discrepancy      = 1.0;
-    size_t lddc             = magma_roundup(dim_, 32);
-    unsigned int count_iter = 0;
+    double alpha             = 1.0;
+    double beta              = 0.0;
+    double discrepancy_check = 1.0;
+    size_t lddc              = magma_roundup(dim_, 32);
+    unsigned int count_iter  = 0;
 
 #ifdef USE_MAGMA
 
@@ -525,7 +540,7 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
     // Start timer for Schulz iteration
     single_schulz_iteration_tm_.start();
 
-    while ((count_iter < max_iter) & (discrepancy > tol))
+    while ((count_iter < max_iter) & (discrepancy_check > tol))
     {
         // Compute Y = A*Z
         magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, alpha,
@@ -546,9 +561,9 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol)
         // criterion
         magma_queue_sync(queue);
         conv_test_tm_.start();
-        // discrepancy = relativeDiscrepancy(dim_, dim_, dZ, dZaux);
-        if (count_iter % 5 == 0)
-            discrepancy = absoluteDiscrepancy(dim_, dim_, dZ, dZaux);
+        if (count_iter % frequency_convergence_check == 0)
+            discrepancy_check
+                = discrepancy(dim_, dim_, dZ, dZaux, convergence_check);
         conv_test_tm_.stop();
 
         double* dZtemp = dZ;

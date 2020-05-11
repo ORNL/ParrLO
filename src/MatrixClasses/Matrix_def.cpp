@@ -521,7 +521,8 @@ void Matrix::computeAtA()
 }
 
 int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
-    unsigned int max_iter, double tol)
+    unsigned int max_iter, double tol, std::string convergence_check,
+    int frequency_convergence_check)
 {
     ortho_tm_.start();
 
@@ -533,8 +534,8 @@ int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
         orthogonalize_direct_cholesky();
     else if (method == "iterative_method_single"
              || method == "iterative_method_coupled")
-        count_iter = orthogonalize_iterative_method(
-            method, diagonal_rescaling, max_iter, tol);
+        count_iter = orthogonalize_iterative_method(method, diagonal_rescaling,
+            max_iter, tol, convergence_check, frequency_convergence_check);
     else
     {
         std::cerr << "Need to specify orthogonalization method!!!" << std::endl;
@@ -547,7 +548,8 @@ int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
 }
 
 int Matrix::orthogonalize_iterative_method(std::string method,
-    bool diagonal_rescaling, unsigned int max_iter, double tol)
+    bool diagonal_rescaling, unsigned int max_iter, double tol,
+    std::string convergence_check, int frequency_convergcence_check)
 {
     // compute local contributions to Gram matrix
     computeAtA();
@@ -572,9 +574,11 @@ int Matrix::orthogonalize_iterative_method(std::string method,
 
     if (diagonal_rescaling) AtA.preRescale();
     if (method == "iterative_method_single")
-        count_iter = AtA.SchulzStabilizedSingle(max_iter, tol);
+        count_iter = AtA.SchulzStabilizedSingle(
+            max_iter, tol, convergence_check, frequency_convergcence_check);
     else
-        count_iter = AtA.SchulzCoupled(max_iter, tol);
+        count_iter = AtA.SchulzCoupled(
+            max_iter, tol, convergence_check, frequency_convergcence_check);
     if (diagonal_rescaling) AtA.postRescale();
 
     // Restore orthogonality on columns of A

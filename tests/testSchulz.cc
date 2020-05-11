@@ -82,7 +82,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    int count_iter = B.SchulzCoupled(20, 1.e-6);
+    int count_iter = B.SchulzCoupled(20, 1.e-6, "relative", 1);
 
     B.add(-1., C);
 
