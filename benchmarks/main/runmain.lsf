@@ -5,7 +5,6 @@
 #BSUB -e orthomain.e%J
 #BSUB -W 20
 #BSUB -nnodes 2
-#BSUB -alloc_flags gpumps
 
 
 . /ccs/home/gwjgavin/ParallelLinearAlgebra_dev/ParallelLinearAlgebra/scripts/modules.summit
