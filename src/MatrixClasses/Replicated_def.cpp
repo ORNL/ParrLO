@@ -21,6 +21,7 @@ Timer Replicated::post_rescale_tm_("Replicated::post_rescale");
 Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
 Timer Replicated::single_schulz_iteration_tm_(
     "Replicated::single_schulz_iteration");
+Timer Replicated::single_schulz_delta_tm_("Replicated::single_schulz_delta");
 Timer Replicated::conv_test_tm_("Replicated::convergence_test");
 
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
@@ -595,6 +596,76 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol,
     memory_free_tm_.stop();
 
 #endif
+
+    return count_iter;
+}
+
+int Replicated::SchulzStabilizedSingleDelta(unsigned int max_iter, double tol)
+{
+    single_schulz_delta_tm_.start();
+
+    double discrepancy_check = 1.e8;
+    size_t lddc              = magma_roundup(dim_, 32);
+    unsigned int count_iter  = 0;
+
+#ifdef USE_MAGMA
+    magma_queue_t queue;
+    int device;
+    magma_getdevice(&device);
+    magma_queue_create(device, &queue);
+
+    double* dT1;
+    double* dT2;
+    double* dZ;
+
+    magma_dmalloc(&dT1, lddc * dim_);
+    magma_dmalloc(&dT2, lddc * dim_);
+    magma_dmalloc(&dZ, lddc * dim_);
+
+    // set initial Z to identity
+    magmablas_dlaset(MagmaFull, dim_, dim_, 0.0, 1.0, dZ, lddc, queue);
+
+    magma_norm_t matrix_norm = MagmaOneNorm;
+
+    while ((count_iter < max_iter) & (discrepancy_check > tol))
+    {
+        // Compute T1 = Z*Z
+        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, 1., dZ,
+            lddc, dZ, lddc, 0., dT1, lddc, queue);
+        // Compute T2 = S*T1
+        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, 1.,
+            *device_data_, lddc, dT1, lddc, 0., dT2, lddc, queue);
+        // Compute T1 = Z^T*T2
+        magmablas_dgemm(MagmaTrans, MagmaNoTrans, dim_, dim_, dim_, 1., dZ,
+            lddc, dT2, lddc, 0., dT1, lddc, queue);
+        // Compute T1 <- 0.5*(Z-T1)
+        magmablas_dgeadd2(dim_, dim_, 0.5, dZ, lddc, -0.5, dT1, lddc, queue);
+        // norm(Z)
+        double normZ = magmablas_dlange(
+            matrix_norm, dim_, dim_, dZ, lddc, dT2, lddc, queue);
+        // norm(delta Z)
+        double normDeltaZ = magmablas_dlange(
+            matrix_norm, dim_, dim_, dT1, lddc, dT2, lddc, queue);
+        magma_queue_sync(queue);
+        discrepancy_check = normDeltaZ / normZ;
+
+        // add delta Z to "old" Z
+        magmablas_dgeadd2(dim_, dim_, 1., dT1, lddc, 1., dZ, lddc, queue);
+
+        count_iter++;
+    }
+
+    // Pointer swapping to overwrite aTa with the inverse square root
+    std::swap(dZ, *device_data_);
+
+    magma_queue_destroy(queue);
+
+    magma_free(dZ);
+    magma_free(dT2);
+    magma_free(dT1);
+#endif
+
+    single_schulz_delta_tm_.stop();
 
     return count_iter;
 }

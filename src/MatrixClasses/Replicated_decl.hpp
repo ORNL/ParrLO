@@ -57,6 +57,7 @@ private:
     static Timer post_rescale_tm_;
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;
+    static Timer single_schulz_delta_tm_;
     static Timer conv_test_tm_;
 
     // compute eigenvectors and eigenvalues of matrix
@@ -121,6 +122,9 @@ public:
     int SchulzStabilizedSingle(unsigned int max_iter, double tol,
         std::string convergence_check, int frequency_convergence_check);
 
+    // Stabilized single Schulz iteraion based on deltaZ
+    int SchulzStabilizedSingleDelta(unsigned int max_iter, double tol);
+
     // Cholesky QR
     void CholeskyQR();
 
@@ -140,6 +144,7 @@ public:
         post_rescale_tm_.print(os);
         schulz_iteration_tm_.print(os);
         single_schulz_iteration_tm_.print(os);
+        single_schulz_delta_tm_.print(os);
         conv_test_tm_.print(os);
     }
 
