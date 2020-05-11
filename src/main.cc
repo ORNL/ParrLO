@@ -45,6 +45,8 @@ namespace po = boost::program_options;
 // [Schulz_iteration]
 // max_iterations=100
 // tolerance=1e-4
+// implementation=original
+//               =delta
 // [Convergence]
 // convergence_check="relative"
 //                  ="absolute"
@@ -77,6 +79,7 @@ int main(int argc, char** argv)
         double itolerance;
         std::string iconvergence_check   = "relative";
         int ifrequency_convergence_check = 1;
+        std::string iimplementation;
 
         // read run time-parameters from PE0
         if (comm_rank == 0)
@@ -112,11 +115,13 @@ int main(int argc, char** argv)
                 "maximum number of iterations allowed for Schulz algorithm")(
                 "Schulz_iteration.tolerance", po::value<double>()->required(),
                 "stopping tolerance for Schulz algorithm")(
-                "Convergence.convergence_check",
-                po::value<std::string>()->required(),
+                "Schulz_iteration.implementation",
+                po::value<std::string>()->default_value("original"),
+                "Choice of implementation")("Convergence.convergence_check",
+                po::value<std::string>()->default_value("relative"),
                 "Type of convergence check")(
                 "Convergence.frequency_convergence_check",
-                po::value<int>()->required(),
+                po::value<int>()->default_value(1),
                 "Frequency to compute the convergence check");
 
             po::options_description cmdline_options;
@@ -162,6 +167,8 @@ int main(int argc, char** argv)
             iortho_type = vm["Orthogonalization.method_type"].as<std::string>();
             imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
             itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
+            iimplementation
+                = vm["Schulz_iteration.implementation"].as<std::string>();
             iconvergence_check
                 = vm["Convergence.convergence_check"].as<std::string>();
             ifrequency_convergence_check
@@ -238,6 +245,20 @@ int main(int argc, char** argv)
                 iconvergence_check = new_iconvergence_check;
             }
         }
+        // bcast "iimplementation"
+        {
+            std::vector<char> v(convergence_string_length + 1);
+            if (comm_rank == 0) strcpy(v.data(), iimplementation.c_str());
+            ret = MPI_Bcast(v.data(), v.size(), MPI_CHAR, 0, MPI_COMM_WORLD);
+            if (ret != MPI_SUCCESS)
+                std::cerr << "iimplementation`: MPI_Bcast error!" << std::endl;
+            else
+            {
+                std::string new_iimplementation(v.data());
+                iimplementation = new_iimplementation;
+            }
+        }
+
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&ifrequency_convergence_check, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -292,9 +313,9 @@ int main(int argc, char** argv)
                 << "Departure from orthogonality before re-orthogonalizing: "
                 << departure_from_orthogonality << std::endl;
 
-        int count_iter
-            = A.orthogonalize(iortho_type, idiagonal_rescaling, imax_iterations,
-                itolerance, iconvergence_check, ifrequency_convergence_check);
+        int count_iter = A.orthogonalize(iortho_type, idiagonal_rescaling,
+            imax_iterations, itolerance, iimplementation, iconvergence_check,
+            ifrequency_convergence_check);
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
         if (comm_rank == 0 && count_iter > 0)

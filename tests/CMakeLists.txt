@@ -145,6 +145,12 @@ add_test(NAME testOrthoGaussian
          ${CMAKE_CURRENT_BINARY_DIR}/../src/main
          ${CMAKE_CURRENT_SOURCE_DIR}/testOrthoGaussian.cfg)
 
+add_test(NAME testOrthoGaussianDelta
+         COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/testOrtho.py
+         ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
+         ${CMAKE_CURRENT_BINARY_DIR}/../src/main
+         ${CMAKE_CURRENT_SOURCE_DIR}/testOrthoGaussianDelta.cfg)
+
 add_test(NAME testOrthoHatFunction
          COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/testOrtho.py
          ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4 ${MPIEXEC_PREFLAGS}
