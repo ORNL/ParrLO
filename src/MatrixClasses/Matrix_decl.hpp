@@ -126,10 +126,13 @@ public:
 
     // Routine wrapper for orthogonalization
     int orthogonalize(std::string method, bool diagonal_rescaling = false,
-        unsigned int max_iter = 10, double tol = 1e-4);
+        unsigned int max_iter = 10, double tol = 1e-4,
+        std::string convergence_check    = "relative",
+        int frequency_convergcence_check = 1);
 
     // Routine for orthogonalization using Schulz iteration
-    int orthogonalize_iterative_method(std::string, bool, unsigned int, double);
+    int orthogonalize_iterative_method(
+        std::string, bool, unsigned int, double, std::string, int);
 
     // Routine for orthogonalization using the diagonalization of a matrix
     void orthogonalize_direct_invsqrt();
@@ -152,6 +155,9 @@ public:
 
     // FRIEND methods
     friend double relativeDiscrepancy(
+        size_t, size_t, const double*, const double*);
+
+    friend double absoluteDiscrepancy(
         size_t, size_t, const double*, const double*);
 };
 #endif

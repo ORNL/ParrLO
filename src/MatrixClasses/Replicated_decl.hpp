@@ -14,6 +14,8 @@
 #endif
 
 double relativeDiscrepancy(size_t, size_t, const double*, const double*);
+double absoluteDiscrepancy(size_t, size_t, const double*, const double*);
+double discrepancy(size_t, size_t, const double*, const double*, std::string);
 
 class Replicated
 {
@@ -112,10 +114,12 @@ public:
     void postRescale();
 
     // Coupled Schulz iteraion
-    int SchulzCoupled(unsigned int max_iter, double tol);
+    int SchulzCoupled(unsigned int max_iter, double tol,
+        std::string convergence_check, int frequency_convergence_check);
 
     // Stabilized single Schulz iteraion
-    int SchulzStabilizedSingle(unsigned int max_iter, double tol);
+    int SchulzStabilizedSingle(unsigned int max_iter, double tol,
+        std::string convergence_check, int frequency_convergence_check);
 
     // Cholesky QR
     void CholeskyQR();
@@ -143,6 +147,10 @@ public:
     // Compute convergence criterion for Schulz iteration
     friend double relativeDiscrepancy(
         size_t, size_t, const double*, const double*);
+    friend double absoluteDiscrepancy(
+        size_t, size_t, const double*, const double*);
+    friend double discrepancy(
+        size_t, size_t, const double*, const double*, std::string);
 };
 
 #endif

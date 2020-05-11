@@ -45,6 +45,10 @@ namespace po = boost::program_options;
 // [Schulz_iteration]
 // max_iterations=100
 // tolerance=1e-4
+// [Convergence]
+// convergence_check="relative"
+//                  ="absolute"
+// frequency_convergence_check = 1
 
 int main(int argc, char** argv)
 {
@@ -71,6 +75,8 @@ int main(int argc, char** argv)
         std::string iortho_type;
         int imax_iterations;
         double itolerance;
+        std::string iconvergence_check   = "relative";
+        int ifrequency_convergence_check = 1;
 
         // read run time-parameters from PE0
         if (comm_rank == 0)
@@ -105,7 +111,13 @@ int main(int argc, char** argv)
                 "Schulz_iteration.max_iterations", po::value<int>()->required(),
                 "maximum number of iterations allowed for Schulz algorithm")(
                 "Schulz_iteration.tolerance", po::value<double>()->required(),
-                "stopping tolerance for Schulz algorithm");
+                "stopping tolerance for Schulz algorithm")(
+                "Convergence.convergence_check",
+                po::value<std::string>()->required(),
+                "Type of convergence check")(
+                "Convergence.frequency_convergence_check",
+                po::value<int>()->required(),
+                "Frequency to compute the convergence check");
 
             po::options_description cmdline_options;
             cmdline_options.add(generic);
@@ -150,6 +162,10 @@ int main(int argc, char** argv)
             iortho_type = vm["Orthogonalization.method_type"].as<std::string>();
             imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
             itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
+            iconvergence_check
+                = vm["Convergence.convergence_check"].as<std::string>();
+            ifrequency_convergence_check
+                = vm["Convergence.frequency_convergence_check"].as<int>();
         }
 
         // broadcast input parameters to all MPI tasks
@@ -168,6 +184,8 @@ int main(int argc, char** argv)
         MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
         int ortho_string_length = iortho_type.length();
         MPI_Bcast(&ortho_string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        int convergence_string_length = iconvergence_check.length();
+        MPI_Bcast(&convergence_string_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         // bcast "iortho_type"
         {
@@ -203,8 +221,26 @@ int main(int argc, char** argv)
             }
         }
 
+        // bcast "iconvergence_check"
+        {
+            std::vector<char> iconvergence_check_v(
+                convergence_string_length + 1);
+            if (comm_rank == 0)
+                strcpy(iconvergence_check_v.data(), iconvergence_check.c_str());
+            ret = MPI_Bcast(iconvergence_check_v.data(),
+                iconvergence_check_v.size(), MPI_CHAR, 0, MPI_COMM_WORLD);
+            if (ret != MPI_SUCCESS)
+                std::cerr << "iconvergence_type_v: MPI_Bcast error!"
+                          << std::endl;
+            else
+            {
+                std::string new_iconvergence_check(iconvergence_check_v.data());
+                iconvergence_check = new_iconvergence_check;
+            }
+        }
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&ifrequency_convergence_check, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         Timer matrix_time("matrix_ortho");
         matrix_time.start();
@@ -256,8 +292,9 @@ int main(int argc, char** argv)
                 << "Departure from orthogonality before re-orthogonalizing: "
                 << departure_from_orthogonality << std::endl;
 
-        int count_iter = A.orthogonalize(
-            iortho_type, idiagonal_rescaling, imax_iterations, itolerance);
+        int count_iter
+            = A.orthogonalize(iortho_type, idiagonal_rescaling, imax_iterations,
+                itolerance, iconvergence_check, ifrequency_convergence_check);
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
         if (comm_rank == 0 && count_iter > 0)
