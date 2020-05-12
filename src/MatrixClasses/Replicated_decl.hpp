@@ -58,6 +58,7 @@ private:
     static Timer schulz_iteration_tm_;
     static Timer single_schulz_iteration_tm_;
     static Timer single_schulz_delta_tm_;
+    static Timer choleskyqr_tm_;
     static Timer conv_test_tm_;
 
     // compute eigenvectors and eigenvalues of matrix
@@ -145,6 +146,7 @@ public:
         schulz_iteration_tm_.print(os);
         single_schulz_iteration_tm_.print(os);
         single_schulz_delta_tm_.print(os);
+        choleskyqr_tm_.print(os);
         conv_test_tm_.print(os);
     }
 
