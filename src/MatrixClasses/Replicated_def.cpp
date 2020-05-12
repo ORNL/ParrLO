@@ -22,6 +22,7 @@ Timer Replicated::schulz_iteration_tm_("Replicated::schulz_iteration");
 Timer Replicated::single_schulz_iteration_tm_(
     "Replicated::single_schulz_iteration");
 Timer Replicated::single_schulz_delta_tm_("Replicated::single_schulz_delta");
+Timer Replicated::choleskyqr_tm_("Replicated::cholesky_qr");
 Timer Replicated::conv_test_tm_("Replicated::convergence_test");
 
 double relativeDiscrepancy(size_t n, size_t m, const double* A, const double* B)
@@ -769,6 +770,8 @@ void Replicated::diagonalize(double* evecs, std::vector<double>& evals)
 
 void Replicated::CholeskyQR()
 {
+    choleskyqr_tm_.start();
+
     magma_queue_t queue;
     int device;
     magma_getdevice(&device);
@@ -789,6 +792,8 @@ void Replicated::CholeskyQR()
         std::cerr << "magma_dtrtri_gpu failed, info = " << info << std::endl;
 
     magma_queue_destroy(queue);
+
+    choleskyqr_tm_.stop();
 }
 
 void Replicated::InvSqrt()

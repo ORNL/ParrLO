@@ -700,7 +700,6 @@ void Matrix::orthogonalize_direct_cholesky()
     Replicated AtA(&replicated_S_, n_cols_, lacomm_, nccllacomm_);
 
     AtA.CholeskyQR();
-    AtA.printMatrix();
 
     // Restore orthogonality on columns of A
     magma_dtrmm(MagmaRight, MagmaLower, MagmaTrans, MagmaNonUnit, n_rows_local_,
