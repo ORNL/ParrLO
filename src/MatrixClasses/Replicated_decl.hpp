@@ -124,7 +124,8 @@ public:
         std::string convergence_check, int frequency_convergence_check);
 
     // Stabilized single Schulz iteraion based on deltaZ
-    int SchulzStabilizedSingleDelta(unsigned int max_iter, double tol);
+    int SchulzStabilizedSingleDelta(
+        unsigned int max_iter, double tol, MPI_Comm comm = MPI_COMM_NULL);
 
     // Cholesky QR
     void CholeskyQR();

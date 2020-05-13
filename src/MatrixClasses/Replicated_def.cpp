@@ -601,13 +601,38 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol,
     return count_iter;
 }
 
-int Replicated::SchulzStabilizedSingleDelta(unsigned int max_iter, double tol)
+int Replicated::SchulzStabilizedSingleDelta(
+    unsigned int max_iter, double tol, MPI_Comm comm)
 {
     single_schulz_delta_tm_.start();
 
     double discrepancy_check = 1.e8;
     size_t lddc              = magma_roundup(dim_, 32);
     unsigned int count_iter  = 0;
+
+    int Nd        = dim_;
+    int comm_rank = -1;
+    int comm_size = 0;
+    int offset    = 0;
+    std::vector<int> offset_remote;
+
+    MPI_Request reqs[2];
+    if (comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_size(comm, &comm_size);
+        MPI_Comm_rank(comm, &comm_rank);
+        Nd = dim_ / comm_size;
+        assert(Nd * comm_size == (int)dim_);
+        offset = Nd * lddc * comm_rank;
+        for (int i = 0; i < comm_size - 1; i++)
+        {
+            int src = (comm_size + comm_rank - i - 1) % comm_size;
+            offset_remote.push_back(Nd * lddc * src);
+        }
+        if (comm_rank == 0)
+            std::cout << "Solve Schulz with " << comm_size << " tasks"
+                      << std::endl;
+    }
 
 #ifdef USE_MAGMA
     magma_queue_t queue;
@@ -631,28 +656,51 @@ int Replicated::SchulzStabilizedSingleDelta(unsigned int max_iter, double tol)
     while ((count_iter < max_iter) & (discrepancy_check > tol))
     {
         // Compute T1 = Z*Z
-        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, 1., dZ,
-            lddc, dZ, lddc, 0., dT1, lddc, queue);
+        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, Nd, dim_, 1., dZ,
+            lddc, dZ + offset, lddc, 0., dT1 + offset, lddc, queue);
         // Compute T2 = S*T1
-        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, dim_, dim_, 1.,
-            *device_data_, lddc, dT1, lddc, 0., dT2, lddc, queue);
+        magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, dim_, Nd, dim_, 1.,
+            *device_data_, lddc, dT1 + offset, lddc, 0., dT2 + offset, lddc,
+            queue);
         // Compute T1 = Z^T*T2
-        magmablas_dgemm(MagmaTrans, MagmaNoTrans, dim_, dim_, dim_, 1., dZ,
-            lddc, dT2, lddc, 0., dT1, lddc, queue);
+        magmablas_dgemm(MagmaTrans, MagmaNoTrans, dim_, Nd, dim_, 1., dZ, lddc,
+            dT2 + offset, lddc, 0., dT1 + offset, lddc, queue);
         // Compute T1 <- 0.5*(Z-T1)
-        magmablas_dgeadd2(dim_, dim_, 0.5, dZ, lddc, -0.5, dT1, lddc, queue);
+        magmablas_dgeadd2(
+            dim_, Nd, 0.5, dZ + offset, lddc, -0.5, dT1 + offset, lddc, queue);
         // norm(Z)
-        double normZ = magmablas_dlange(
-            matrix_norm, dim_, dim_, dZ, lddc, dT2, lddc, queue);
+        double normZ = magmablas_dlange(matrix_norm, dim_, Nd, dZ + offset,
+            lddc, dT2 + offset, lddc, queue);
         // norm(delta Z)
-        double normDeltaZ = magmablas_dlange(
-            matrix_norm, dim_, dim_, dT1, lddc, dT2, lddc, queue);
+        double normDeltaZ = magmablas_dlange(matrix_norm, dim_, Nd,
+            dT1 + offset, lddc, dT2 + offset, lddc, queue);
         magma_queue_sync(queue);
-        discrepancy_check = normDeltaZ / normZ;
 
         // add delta Z to "old" Z
-        magmablas_dgeadd2(dim_, dim_, 1., dT1, lddc, 1., dZ, lddc, queue);
+        magmablas_dgeadd2(
+            dim_, Nd, 1., dT1 + offset, lddc, 1., dZ + offset, lddc, queue);
 
+        if (comm_size > 0)
+        {
+            double tmp1[2] = { normZ, normDeltaZ };
+            double tmp2[2];
+            MPI_Allreduce(&tmp1[0], &tmp2[0], 2, MPI_DOUBLE, MPI_MAX, comm);
+            normZ      = tmp2[0];
+            normDeltaZ = tmp2[1];
+        }
+
+        discrepancy_check = normDeltaZ / normZ;
+
+        for (int i = 0; i < comm_size - 1; i++)
+        {
+            int dst = (comm_rank + i + 1) % comm_size;
+            int src = (comm_size + comm_rank - i - 1) % comm_size;
+            MPI_Irecv(dZ + offset_remote[i], Nd * lddc, MPI_DOUBLE, src, i,
+                comm, &reqs[0]);
+            MPI_Issend(
+                dZ + offset, Nd * lddc, MPI_DOUBLE, dst, i, comm, &reqs[1]);
+            MPI_Waitall(2, reqs, MPI_STATUS_IGNORE);
+        }
         count_iter++;
     }
 
