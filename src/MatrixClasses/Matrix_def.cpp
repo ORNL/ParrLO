@@ -522,7 +522,8 @@ void Matrix::computeAtA()
 
 int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
     unsigned int max_iter, double tol, std::string implementation,
-    std::string convergence_check, int frequency_convergence_check)
+    const int ntasks, std::string convergence_check,
+    int frequency_convergence_check)
 {
     ortho_tm_.start();
 
@@ -535,7 +536,7 @@ int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
     else if (method == "iterative_method_single"
              || method == "iterative_method_coupled")
         count_iter = orthogonalize_iterative_method(method, diagonal_rescaling,
-            max_iter, tol, implementation, convergence_check,
+            max_iter, tol, implementation, ntasks, convergence_check,
             frequency_convergence_check);
     else
     {
@@ -550,7 +551,7 @@ int Matrix::orthogonalize(std::string method, bool diagonal_rescaling,
 
 int Matrix::orthogonalize_iterative_method(std::string method,
     bool diagonal_rescaling, unsigned int max_iter, double tol,
-    std::string implementation, std::string convergence_check,
+    std::string implementation, const int ntasks, std::string convergence_check,
     int frequency_convergcence_check)
 {
     // compute local contributions to Gram matrix
@@ -581,7 +582,25 @@ int Matrix::orthogonalize_iterative_method(std::string method,
             count_iter = AtA.SchulzStabilizedSingle(
                 max_iter, tol, convergence_check, frequency_convergcence_check);
         else
-            count_iter = AtA.SchulzStabilizedSingleDelta(max_iter, tol);
+        {
+            MPI_Comm newcomm = MPI_COMM_NULL;
+            if (ntasks > 1)
+            {
+                int commsize;
+                MPI_Comm_size(lacomm_, &commsize);
+                if (commsize % ntasks == 0)
+                {
+                    int commrank;
+                    MPI_Comm_rank(lacomm_, &commrank);
+                    int color = commrank / ntasks;
+                    int key   = commrank % ntasks;
+                    MPI_Comm_split(lacomm_, color, key, &newcomm);
+                }
+            }
+            count_iter
+                = AtA.SchulzStabilizedSingleDelta(max_iter, tol, newcomm);
+            if (newcomm != MPI_COMM_NULL) MPI_Comm_free(&newcomm);
+        }
     }
     else
         count_iter = AtA.SchulzCoupled(

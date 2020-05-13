@@ -47,6 +47,7 @@ namespace po = boost::program_options;
 // tolerance=1e-4
 // implementation=original
 //               =delta
+// ntasks = 3
 // [Convergence]
 // convergence_check="relative"
 //                  ="absolute"
@@ -76,6 +77,7 @@ int main(int argc, char** argv)
         bool idiagonal_rescaling;
         std::string iortho_type;
         int imax_iterations;
+        int intasks;
         double itolerance;
         std::string iconvergence_check   = "relative";
         int ifrequency_convergence_check = 1;
@@ -117,7 +119,10 @@ int main(int argc, char** argv)
                 "stopping tolerance for Schulz algorithm")(
                 "Schulz_iteration.implementation",
                 po::value<std::string>()->default_value("original"),
-                "Choice of implementation")("Convergence.convergence_check",
+                "Choice of implementation")("Schulz_iteration.ntasks",
+                po::value<int>()->default_value(1),
+                "Number of tasks to distribute Schulz computation")(
+                "Convergence.convergence_check",
                 po::value<std::string>()->default_value("relative"),
                 "Type of convergence check")(
                 "Convergence.frequency_convergence_check",
@@ -169,6 +174,7 @@ int main(int argc, char** argv)
             itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
             iimplementation
                 = vm["Schulz_iteration.implementation"].as<std::string>();
+            intasks = vm["Schulz_iteration.ntasks"].as<int>();
             iconvergence_check
                 = vm["Convergence.convergence_check"].as<std::string>();
             ifrequency_convergence_check
@@ -260,6 +266,7 @@ int main(int argc, char** argv)
         }
 
         MPI_Bcast(&imax_iterations, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&intasks, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&itolerance, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&ifrequency_convergence_check, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -334,8 +341,8 @@ int main(int argc, char** argv)
                 << departure_from_orthogonality << std::endl;
 
         int count_iter = A.orthogonalize(iortho_type, idiagonal_rescaling,
-            imax_iterations, itolerance, iimplementation, iconvergence_check,
-            ifrequency_convergence_check);
+            imax_iterations, itolerance, iimplementation, intasks,
+            iconvergence_check, ifrequency_convergence_check);
 
         if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
         if (comm_rank == 0 && count_iter > 0)

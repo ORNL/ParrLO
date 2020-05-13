@@ -127,13 +127,13 @@ public:
     // Routine wrapper for orthogonalization
     int orthogonalize(std::string method, bool diagonal_rescaling = false,
         unsigned int max_iter = 10, double tol = 1e-4,
-        std::string implementation       = "original",
+        std::string implementation = "original", const int ntasks = 1,
         std::string convergence_check    = "relative",
         int frequency_convergcence_check = 1);
 
     // Routine for orthogonalization using Schulz iteration
-    int orthogonalize_iterative_method(
-        std::string, bool, unsigned int, double, std::string, std::string, int);
+    int orthogonalize_iterative_method(std::string, bool, unsigned int, double,
+        std::string, const int, std::string, int);
 
     // Routine for orthogonalization using the diagonalization of a matrix
     void orthogonalize_direct_invsqrt();
