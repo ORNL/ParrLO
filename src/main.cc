@@ -1,5 +1,7 @@
 #include "MatrixClasses/Matrix_decl.hpp"
 #include "MatrixClasses/Timer.hpp"
+#include "warmup.h"
+
 #include <fstream>
 #include <iostream>
 #include <mpi.h>
@@ -290,25 +292,12 @@ int main(int argc, char** argv)
         magma_init();
 
         if (comm_rank == 0) magma_print_environment();
-
-#ifdef NCCL_COMM
-        // warmup nccl
-        cudaStream_t s;
-        cudaStreamCreate(&s);
-        double* dwork;
-        int datasize = 32 * 100;
-        magma_dmalloc(&dwork, datasize);
-        for (int i = 0; i < 10; i++)
-        {
-            ncclAllReduce(dwork, dwork, datasize, ncclDouble, ncclSum,
-                nccl_world_comm, s);
-        }
-        magma_free(dwork);
-        cudaStreamSynchronize(s);
-        cudaStreamDestroy(s);
-
 #endif
 
+        warmup_MPI_pt2pt(MPI_COMM_WORLD);
+
+#ifdef NCCL_COMM
+        warmup_NCCL(nccl_world_comm);
 #endif
 
         int nrows = idata[0];

@@ -1,4 +1,5 @@
 set(SOURCES ${CMAKE_SOURCE_DIR}/src/main.cc
+            ${CMAKE_SOURCE_DIR}/src/warmup.cc
             ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Matrix_def.cpp
             ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Replicated_def.cpp
             ${CMAKE_SOURCE_DIR}/src/MatrixClasses/Timer.cpp)
