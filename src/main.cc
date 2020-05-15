@@ -44,12 +44,13 @@ namespace po = boost::program_options;
 // method_type=direct_method
 //            =iterative_method_single
 //            =iterative_method_couple
+// num_runs=50
 // [Schulz_iteration]
 // max_iterations=100
 // tolerance=1e-4
 // implementation=original
 //               =delta
-// ntasks = 3
+// ntasks = 2
 // [Convergence]
 // convergence_check="relative"
 //                  ="absolute"
@@ -76,6 +77,7 @@ int main(int argc, char** argv)
         double iwavefunctions_center_displacement = 0.0;
         double iwavefunctions_width               = 0.8;
         double irescaling;
+        int inum_runs;
         bool idiagonal_rescaling;
         std::string iortho_type;
         int imax_iterations;
@@ -114,7 +116,8 @@ int main(int argc, char** argv)
                 "rescaling for Schulz iteration")(
                 "Orthogonalization.method_type",
                 po::value<std::string>()->required(),
-                "maximum number of iterations allowed for Schulz algorithm")(
+                "method of orthogonalization")("Orthogonalization.num_runs",
+                po::value<int>()->default_value(1), "number of runs")(
                 "Schulz_iteration.max_iterations", po::value<int>()->required(),
                 "maximum number of iterations allowed for Schulz algorithm")(
                 "Schulz_iteration.tolerance", po::value<double>()->required(),
@@ -172,6 +175,7 @@ int main(int argc, char** argv)
             irescaling          = vm["Rescaling.rescaling"].as<double>();
             idiagonal_rescaling = vm["DiagonalRescaling.rescaling"].as<bool>();
             iortho_type = vm["Orthogonalization.method_type"].as<std::string>();
+            inum_runs   = vm["Orthogonalization.num_runs"].as<int>();
             imax_iterations = vm["Schulz_iteration.max_iterations"].as<int>();
             itolerance      = vm["Schulz_iteration.tolerance"].as<double>();
             iimplementation
@@ -195,6 +199,7 @@ int main(int argc, char** argv)
         MPI_Bcast(&iwavefunctions_width, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&iwavefunctions_center_displacement, 1, MPI_DOUBLE, 0,
             MPI_COMM_WORLD);
+        MPI_Bcast(&inum_runs, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&irescaling, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(&idiagonal_rescaling, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
         int ortho_string_length = iortho_type.length();
@@ -319,37 +324,45 @@ int main(int argc, char** argv)
             A.hatColumnsInitialize(
                 support_length, iwavefunctions_center_displacement);
 
-        // Perform the check on the departure from orthogonality before
-        // re-orthogonalizing
-        double departure_from_orthogonality = 0.0;
-        departure_from_orthogonality        = A.orthogonalityCheck();
+        for (int step = 0; step < inum_runs; step++)
+        {
+            if (step) A.transferDataCPUtoGPU();
+            // Perform the check on the departure from orthogonality before
+            // re-orthogonalizing
+            double departure_from_orthogonality = 0.0;
+            departure_from_orthogonality        = A.orthogonalityCheck();
 
-        if (comm_rank == 0)
-            std::cout
-                << "Departure from orthogonality before re-orthogonalizing: "
-                << departure_from_orthogonality << std::endl;
+            if (comm_rank == 0)
+                std::cout << "Step = " << step << "/" << inum_runs << "\n"
+                          << "Departure from orthogonality before "
+                             "re-orthogonalizing: "
+                          << departure_from_orthogonality << std::endl;
 
-        int count_iter = A.orthogonalize(iortho_type, idiagonal_rescaling,
-            imax_iterations, itolerance, iimplementation, intasks,
-            iconvergence_check, ifrequency_convergence_check);
+            int count_iter = A.orthogonalize(iortho_type, idiagonal_rescaling,
+                imax_iterations, itolerance, iimplementation, intasks,
+                iconvergence_check, ifrequency_convergence_check);
 
-        if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
-        if (comm_rank == 0 && count_iter > 0)
-            std::cout << "Iterative solve took " << count_iter << " iterations"
-                      << std::endl;
+            if (comm_rank == 0) std::cout << "Orthogonalized A" << std::endl;
+            if (comm_rank == 0 && count_iter > 0)
+                std::cout << "Iterative solve took " << count_iter
+                          << " iterations" << std::endl;
 
-        // A.printMatrix();
+            // A.printMatrix();
 
-        if (comm_rank == 0) std::cout << "Orthogonality check A" << std::endl;
+            if (comm_rank == 0)
+                std::cout << "Orthogonality check A" << std::endl;
 
-        // Perform the check on the departure from orthogonality after
-        // re-orthogonalizing
-        departure_from_orthogonality = A.orthogonalityCheck();
+            // Perform the check on the departure from orthogonality after
+            // re-orthogonalizing
+            departure_from_orthogonality = A.orthogonalityCheck();
 
-        if (comm_rank == 0)
-            std::cout
-                << "Departure from orthogonality after re-orthogonalizing: "
-                << departure_from_orthogonality << std::endl;
+            if (comm_rank == 0)
+                std::cout
+                    << "Departure from orthogonality after re-orthogonalizing: "
+                    << departure_from_orthogonality << std::endl;
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         matrix_time.stop();
 

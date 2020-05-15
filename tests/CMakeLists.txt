@@ -107,7 +107,7 @@ add_test(NAME testMPI
 if (${NCCL_COMM})
   add_test(NAME testMatMul
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS_MATMUL}
-         ${CMAKE_CURRENT_BINARY_DIR}/testMatMul)
+         ${CMAKE_CURRENT_BINARY_DIR}/testMatMul 3000 100)
   add_test(NAME testAllreduce
          COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 6 ${MPIEXEC_PREFLAGS_DEVICECOMM}
          ${CMAKE_CURRENT_BINARY_DIR}/testAllreduce)
