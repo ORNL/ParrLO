@@ -575,6 +575,8 @@ int Replicated::SchulzStabilizedSingle(unsigned int max_iter, double tol,
         count_iter++;
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // Stop timer for Schulz iteration
     single_schulz_iteration_tm_.stop();
 
@@ -684,7 +686,18 @@ int Replicated::SchulzStabilizedSingleDelta(
         {
             double tmp1[2] = { normZ, normDeltaZ };
             double tmp2[2];
+#ifdef NCCL_COMM
+            cudaStream_t s;
+            cudaStreamCreate(&s);
+
+            ncclAllReduce(
+                &tmp1[0], &tmp2[0], 2, ncclDouble, ncclMax, nccllacomm_, s);
+
+            cudaStreamSynchronize(s);
+            cudaStreamDestroy(s);
+#else
             MPI_Allreduce(&tmp1[0], &tmp2[0], 2, MPI_DOUBLE, MPI_MAX, comm);
+#endif
             normZ      = tmp2[0];
             normDeltaZ = tmp2[1];
         }
