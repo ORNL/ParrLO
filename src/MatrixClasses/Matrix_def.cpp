@@ -284,12 +284,12 @@ void Matrix::gaussianColumnsInitialize(
     double width_spread = static_cast<double>(n_rows_) / n_cols_;
     double scaling_factor
         = 1. / (std::sqrt(2 * M_PI) * standard_deviation * width_spread);
-    int row_center_displacement
-        = static_cast<int>((static_cast<double>(n_rows_) / n_cols_)
-                           * center_displacement * dis(gen));
 
     for (size_t j = 0; j < n_cols_; ++j)
     {
+        int row_center_displacement
+            = static_cast<int>(width_spread * center_displacement * dis(gen));
+
         int gaussian_center = int(j) * int(n_rows_ / n_cols_);
 
         if ((gaussian_center + row_center_displacement > 0)
