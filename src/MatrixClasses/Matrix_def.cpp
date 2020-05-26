@@ -728,7 +728,7 @@ void Matrix::orthogonalize_direct_cholesky()
 #endif
 }
 
-double Matrix::orthogonalityCheck()
+double Matrix::orthogonalityCheck(bool diagonal_scaling)
 {
 
     size_t m           = n_cols_;
@@ -771,6 +771,36 @@ double Matrix::orthogonalityCheck()
     MPI_Allreduce(
         &hC[0], &hCsum[0], n_cols_ * n_cols_, MPI_DOUBLE, MPI_SUM, lacomm_);
     magma_dsetmatrix(n_cols_, n_cols_, &hCsum[0], ldc, dC, lddc, queue);
+
+    // Diagonal rescaling of dC
+    if (diagonal_scaling)
+    {
+        int info;
+        double* device_inv_sqrt_diagonal_;
+        magma_dmalloc(&device_inv_sqrt_diagonal_, lddc);
+
+        // Rescale the device_data_
+        std::vector<double> host_inv_sqrt_diagonal(n_cols_);
+
+        for (size_t i = 0; i < n_cols_; ++i)
+            host_inv_sqrt_diagonal[i]
+                = 1. / std::sqrt(hCsum[i * (n_cols_ + 1)]);
+
+        magma_dsetvector(n_cols_, &host_inv_sqrt_diagonal[0], 1,
+            device_inv_sqrt_diagonal_, 1, queue);
+
+        // Compute D^(-1/2)*S
+        magmablas_dlascl2(MagmaFull, n_cols_, n_cols_,
+            device_inv_sqrt_diagonal_, dC, lddc, queue, &info);
+
+        // Compute (D^(-1/2)*S)^T = S * D^(-1/2)
+        magmablas_dtranspose_inplace(n_cols_, dC, lddc, queue);
+
+        // Compute D^(-1/2) * S * D^(-1/2)
+        magmablas_dlascl2(MagmaFull, n_cols_, n_cols_,
+            device_inv_sqrt_diagonal_, dC, lddc, queue, &info);
+        magma_free(device_inv_sqrt_diagonal_);
+    }
 
     // Initialize identity matrix
     magmablas_dlaset(MagmaFull, n_cols_, n_cols_, 0.0, 1.0, dI, lddc, queue);

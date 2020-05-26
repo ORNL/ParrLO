@@ -142,7 +142,7 @@ public:
     void orthogonalize_direct_cholesky();
 
     // Routine to check orthogonality
-    double orthogonalityCheck();
+    double orthogonalityCheck(bool diagonal_scaling = false);
 
     // Print values of timers
     static void printTimers(std::ostream& os)

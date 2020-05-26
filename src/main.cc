@@ -330,7 +330,8 @@ int main(int argc, char** argv)
             // Perform the check on the departure from orthogonality before
             // re-orthogonalizing
             double departure_from_orthogonality = 0.0;
-            departure_from_orthogonality        = A.orthogonalityCheck();
+            departure_from_orthogonality
+                = A.orthogonalityCheck(idiagonal_rescaling);
 
             if (comm_rank == 0)
                 std::cout << "Step = " << step << "/" << inum_runs << "\n"
