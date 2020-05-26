@@ -33,6 +33,8 @@ private:
     std::vector<double> host_data_; // vector for data on host
     double* device_data_ = nullptr; // pointer to basic data structure on gpu
 
+    double* d_work_ = nullptr;
+
     // std::unique_ptr<double[]> host_data_; //I want to avoid that the original
     // data gets corrupted
     double* replicated_S_ = nullptr;

@@ -54,6 +54,9 @@ Matrix::Matrix(size_t n, size_t m, MPI_Comm comm, ncclComm_t nccllacomm)
     size_t ldda = magma_roundup(n_rows_local_, 32);
     magma_dmalloc(&device_data_, ldda * n_cols_);
     assert(device_data_ != nullptr);
+
+    magma_dmalloc(&d_work_, ldda * n_cols_);
+    assert(d_work_ != nullptr);
 }
 
 Matrix::~Matrix()
@@ -77,7 +80,12 @@ Matrix::~Matrix()
             std::cout << "magma free device_data invalid ptr" << std::endl;
         }
     }
-    //  }
+    ret = magma_free(d_work_);
+    if (ret == MAGMA_ERR_INVALID_PTR)
+    {
+        std::cout << "magma free d_work_ invalid ptr" << std::endl;
+    }
+
     if (replicated_S_ != nullptr)
     {
         //  std::cout<<"calling destructor replicated_S"<<std::endl;
@@ -92,7 +100,6 @@ Matrix::~Matrix()
             std::cout << "magma free replicated_S invalid ptr" << std::endl;
         }
     }
-//  }
 #endif
 }
 
@@ -608,22 +615,12 @@ int Matrix::orthogonalize_iterative_method(std::string method,
     if (diagonal_rescaling) AtA.postRescale();
 
     // Restore orthogonality on columns of A
-    double* dAortho;
-    double* dAtemp;
-
-    // Start allocation timer
-    allocate_tm_.start();
-
-    magma_dmalloc(&dAortho, ldda * n_cols_);
-
-    // Stop allocation timer
-    allocate_tm_.stop();
 
     // Start timer for matrix-matrix multiply
     matrix_matrix_multiply_tm_.start();
 
     magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, n_rows_local_, n_cols_, n_cols_,
-        alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
+        alpha, device_data_, ldda, replicated_S_, lddc, beta, d_work_, ldda,
         queue);
 
     magma_queue_destroy(queue);
@@ -632,19 +629,7 @@ int Matrix::orthogonalize_iterative_method(std::string method,
     matrix_matrix_multiply_tm_.stop();
 
     // Pointer swapping
-    dAtemp       = device_data_;
-    device_data_ = dAortho;
-    dAortho      = dAtemp;
-
-    // Start free timer
-    free_tm_.start();
-
-    // Free gpu memory
-    magma_free(dAortho);
-
-    // Stop free timer
-    free_tm_.stop();
-
+    std::swap(device_data_, d_work_);
 #endif
 
     return count_iter;
@@ -675,24 +660,14 @@ void Matrix::orthogonalize_direct_invsqrt()
     AtA.InvSqrt();
 
     // Restore orthogonality on columns of A
-    double* dAortho;
-    magma_dmalloc(&dAortho, ldda * n_cols_);
     magmablas_dgemm(MagmaNoTrans, MagmaNoTrans, n_rows_local_, n_cols_, n_cols_,
-        alpha, device_data_, ldda, replicated_S_, lddc, beta, dAortho, ldda,
+        alpha, device_data_, ldda, replicated_S_, lddc, beta, d_work_, ldda,
         queue);
 
     magma_queue_destroy(queue);
 
     // Pointer swapping
-    std::swap(dAortho, device_data_);
-
-    // Copy dAortho to A on cpu
-    // magma_dgetmatrix( n_rows_local_, n_cols_, dAortho, ldda, &host_data_[0],
-    // lda, queue );
-
-    // Free gpu memory
-    magma_free(dAortho);
-
+    std::swap(d_work_, device_data_);
 #endif
 }
 
