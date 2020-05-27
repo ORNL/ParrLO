@@ -506,7 +506,7 @@ void Matrix::computeAtA()
     size_t lddb = magma_roundup(n_rows_local_, 32);
     size_t lddc = magma_roundup(n_cols_, 32);
 
-    magma_dmalloc(&replicated_S_, lddc * n_cols_);
+    if (replicated_S_ == nullptr) magma_dmalloc(&replicated_S_, lddc * n_cols_);
 
     magma_queue_t queue;
     int device;
