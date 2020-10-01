@@ -1,0 +1,49 @@
+pipeline {
+  agent none
+
+    environment {
+      // Get rid of Read -1, expected <someNumber>, errno =1 error
+      // See https://github.com/open-mpi/ompi/issues/4948
+      OMPI_MCA_btl_vader_single_copy_mechanism = 'none'
+      // Remove warning: "A high-performance Open MPI point-to-point 
+      // messaging module was unable to find any relevant network 
+      // interfaces."
+      OMPI_MCA_btl_base_warn_component_unused = '0'
+      // Only use two threads when using OpenMP
+      OMP_NUM_THREADS = 2
+    }
+
+  stages {
+    stage('Test') {
+      parallel {
+        stage('MAGMA') {
+          agent {
+            docker {
+              image "rombur/parrlo:latest"
+                alwaysPull true
+                label 'nvidia-docker && volta'
+            }
+          }
+          steps {
+            sh 'rm -rf build && mkdir -p build'
+              dir('build') { 
+                sh '''#!/bin/bash 
+                  cmake -DBUILD_FOR_GPU=ON -DPLA_WITH_CLANG_FORMAT=ON -DCMAKE_PREFIX_PATH=/opt/magma ..
+                make -j8
+                ctest --no-compress-output -T Test
+                ''' 
+                sh '''make format 
+                git diff --exit-code
+                '''
+              }
+          }
+          post {
+            always {
+              xunit([CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)])
+            }
+          }
+        }      
+      }
+    }
+  }
+}
